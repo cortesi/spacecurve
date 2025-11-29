@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://corte.si/posts/code/hilbert/portrait/">
-    <img src="./assets/hilbert.png" alt="Hilbert curve illustration" />
+    <img src="https://raw.githubusercontent.com/cortesi/spacecurve/refs/heads/master/assets/hilbert.png" alt="Hilbert curve" />
   </a>
 </p>
 <p align="center">
@@ -44,7 +44,7 @@ Rust with [egui](https://github.com/emilk/egui) and compiled to WebAssembly.
 
 <p align="center">
   <a href="https://corte.si/spacecurve/index.html">
-    <img src="./assets/3d.png" alt="Space-filling curve viewer" />
+    <img src="https://raw.githubusercontent.com/cortesi/spacecurve/refs/heads/master/assets/3d.png" alt="Space-filling curve viewer" />
   </a>
 </p>
 

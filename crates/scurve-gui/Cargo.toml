@@ -30,7 +30,7 @@ default = []
 __screenshot = ["eframe/__screenshot"]
 
 [dependencies]
-spacecurve = { path = "../spacecurve" }
+spacecurve.workspace = true
 anyhow = "1.0"
 getrandom = { version = "0.3", features = ["wasm_js"] }
 egui = "0.33"

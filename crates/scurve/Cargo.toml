@@ -25,9 +25,10 @@ name = "scurve"
 path = "src/main.rs"
 
 [dependencies]
-spacecurve = { path = "../spacecurve" }
-scurve-gui = { path = "../scurve-gui" }
-egui-img = { path = "../egui-img" }
+spacecurve.workspace = true
+scurve-gui.workspace = true
+egui-img.workspace = true
+
 anyhow = "1.0"
 
 # CLI-specific dependencies  

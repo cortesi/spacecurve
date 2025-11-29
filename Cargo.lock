@@ -1220,7 +1220,7 @@ dependencies = [
 
 [[package]]
 name = "egui-img"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "eframe",
@@ -3536,7 +3536,7 @@ dependencies = [
 
 [[package]]
 name = "scurve"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -3554,7 +3554,7 @@ dependencies = [
 
 [[package]]
 name = "scurve-gui"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "console_error_panic_hook",
@@ -3755,7 +3755,7 @@ dependencies = [
 
 [[package]]
 name = "spacecurve"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "criterion",
  "paste",

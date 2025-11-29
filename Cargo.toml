@@ -1,6 +1,6 @@
 [workspace.package]
 authors = ["Aldo Cortesi <aldo@corte.si>"]
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/cortesi/spacecurve"
@@ -41,6 +41,11 @@ needless_pass_by_ref_mut = "warn"
 cognitive_complexity = "warn"
 excessive_nesting = "warn"
 too_many_lines = "warn"
+
+[workspace.dependencies]
+spacecurve = { path = "crates/spacecurve", version = "0.1.2" }
+scurve-gui = { path = "crates/scurve-gui", version = "0.1.2" }
+egui-img = { path = "crates/egui-img", version = "0.1.2" }
 
 [workspace]
 resolver = "2"
