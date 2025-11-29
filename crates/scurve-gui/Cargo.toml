@@ -10,7 +10,6 @@ description = "GUI for exploring space-filling curves"
 readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
-publish = false
 
 [lints]
 workspace = true
