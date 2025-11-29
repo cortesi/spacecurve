@@ -1,0 +1,58 @@
+[workspace.package]
+authors = ["Aldo Cortesi <aldo@corte.si>"]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/cortesi/spacecurve"
+homepage = "https://github.com/cortesi/spacecurve"
+description = "Space-filling curves library and visualization tools."
+readme = "README.md"
+keywords = ["space-filling", "curve", "hilbert", "z-order", "morton"]
+categories = ["algorithms", "graphics"]
+
+[workspace.lints.rust]
+missing_docs = "warn"
+
+# Enable briefly, run cargo clippy (without --tests and --examples), fix
+# unused deps, then disable it again.
+# unused_crate_dependencies = "warn"
+
+[workspace.lints.clippy]
+absolute_paths = "warn"
+branches_sharing_code = "warn"
+ignore_without_reason = "warn"
+let_underscore_must_use = "warn"
+many_single_char_names = "warn"
+missing_docs_in_private_items = "warn"
+multiple_inherent_impl = "warn"
+needless_pass_by_value = "warn"
+redundant_clone = "warn"
+redundant_pub_crate = "warn"
+self_named_module_files = "warn"
+tests_outside_test_module = "warn"
+use_self = "warn"
+wildcard_dependencies = "warn"
+cfg_not_test = "warn"
+comparison_chain = "warn"
+items_after_statements = "warn"
+needless_pass_by_ref_mut = "warn"
+
+# Settings with config values in clippy.toml
+cognitive_complexity = "warn"
+excessive_nesting = "warn"
+too_many_lines = "warn"
+
+[workspace]
+resolver = "2"
+members = [ "crates/*" ]
+
+# Optimization profiles for web builds
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"  # Optimize for size
+strip = "debuginfo"
+lto = true
+codegen-units = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+

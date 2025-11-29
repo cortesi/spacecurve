@@ -1,0 +1,43 @@
+[package]
+name = "scurve"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "CLI tool for visualizing space-filling curves"
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+# Enable screenshot mode for the GUI
+screenshot = ["scurve-gui/__screenshot"]
+
+# CLI binary
+[[bin]]
+name = "scurve"
+path = "src/main.rs"
+
+[dependencies]
+spacecurve = { path = "../spacecurve" }
+scurve-gui = { path = "../scurve-gui" }
+egui-img = { path = "../egui-img" }
+anyhow = "1.0"
+
+# CLI-specific dependencies  
+clap = { version = "4.5", features = ["derive"] }
+image = "0.25" 
+pbr = "1"
+memmap2 = "0.9.8"
+colornames = "0.0.6"
+gif = "0.14.0"
+
+[dev-dependencies]
+assert_cmd = "2.0.17"
+tempfile = "3.22.0"

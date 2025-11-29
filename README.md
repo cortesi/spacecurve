@@ -1,37 +1,66 @@
-A collection of algorithms and visualisation tools related to space-filling
-curves.
+![Discord](https://img.shields.io/discord/1381424110831145070?style=flat-square&logo=rust&link=https%3A%2F%2Fdiscord.gg%2FfHmRmuBDxF)
 
-# See [binvis.io](http://binvis.io) for my more recent interactive binary visualisation tool
-
-# The Curves 
-
-The following traversals of all points in a space are supported (some are true
-space-filling curves, some are not):
-    
-- __hilbert__:    Hilbert curve
-- __natural__:    A natural-order traversal of all points, where each co-ordinate is simply treated as a digit.
-- __zigzag__:     A traversal of all points that zig-zags to ensure that each point differs from the previous point by a unit-offset in only one dimension.
-- __zorder__:     Z-order curve
-
-# The Tools 
-
-- __binvis__: Visualize binaries using space-filling curves.  
-- __colorswatch__: Creates a swatch with a visual breakdown of the colours
-contained in a specified image.
-- __cube__: Outputs a POV-Ray definition file for drawing 3-dimensional curves.
-- __drawcurve__: Generates two dimensional lines-and-vertexes drawings of
-space-filling curves.
-- __gray__: Prints a bit representation of the Gray codes of a specified bit
-width.
-- __testpattern__: Projects a 3-dimensional traversal of the RGB colour cube onto
-a specified two-dimensional curve.
+<p align="center">
+  <a href="https://corte.si/posts/code/hilbert/portrait/">
+    <img src="./assets/hilbert.png" alt="Hilbert curve illustration" />
+  </a>
+</p>
+<p align="center">
+  generated with: '<code>scurve allrgb hilbert</code>'
+</p>
 
 
-# More info
+A **space-filling curve** is a continuous surjection $f:[0,1]\to[0,1]^d$ for
+$d\ge 2$. In discrete spaces, this is an ordering of grid cells that visits
+every cell; some orderings preserve adjacency (e.g., Hilbert), while others
+trade adjacency for simplicity (e.g., Morton/Z-order).
 
-Development on Scurve is usually spurred along by posts on my blog. Some of
-scurve's features are documented and illustrated in the following posts:
+This project contains implementations of various space-filling curves, plus
+tools for visualising and working with them.
+
+
+# spacecurve
+
+[![crates.io](https://img.shields.io/crates/v/spacecurve.svg)](https://crates.io/crates/spacecurve)
+[![docs.rs](https://docs.rs/spacecurve/badge.svg)](https://docs.rs/spacecurve)
+[![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+A Rust library for generating and working with space-filling curves.
+
+
+# scurve
+
+[![crates.io](https://img.shields.io/crates/v/scurve.svg)](https://crates.io/crates/scurve)
+[![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+
+A command-line tool and GUI for generating images of space-filling curves. 
+
+
+# playground
+
+A GUI for visualising space-filling curves and their properties, written in
+Rust with [egui](https://github.com/emilk/egui) and compiled to WebAssembly.
+
+<p align="center">
+  <a href="https://corte.si/spacecurve/index.html">
+    <img src="./assets/3d.png" alt="Space-filling curve viewer" />
+  </a>
+</p>
+
+
+
+# related blog posts
+
+Development on spacecurve (and its ancestors) is usually spurred along by posts
+on my blog. Some of spacecurve's features are documented and illustrated in the
+following posts:
 
 - [Portrait of the Hilbert Curve](http://corte.si/posts/code/hilbert/portrait/index.html) 
 - [Generating colour maps with space-filling curves](http://corte.si/posts/code/hilbert/swatches/index.html)
 - [Hilbert Curve + Sorting Algorithms + Procrastination = ?](http://corte.si/posts/code/sortvis-fruitsalad/index.html)
+
+# community
+
+Want to contribute? Have ideas or feature requests? Come tell me about it on
+[Discord](https://discord.gg/fHmRmuBDxF). 

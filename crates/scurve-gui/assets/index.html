@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>spacecurve - Web Version</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden; /* Prevent scrollbars flicker affecting canvas size */
+            background-color: #2c3e50;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Canvas fills the viewport; eframe will resize it precisely */
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            border: 2px solid #34495e;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .loading {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bevy"></canvas>
+
+    <div class="loading" id="loading">Loading...</div>
+    
+    <!-- Development loader: served by wasm-server-runner via scripts/serve_web.py -->
+    <script type="module">
+        import init from '/api/wasm.js';
+        init('/api/wasm.wasm').then(() => {
+            const loading = document.getElementById('loading');
+            if (loading) loading.style.display = 'none';
+        }).catch(console.error);
+    </script>
+</body>
+</html>

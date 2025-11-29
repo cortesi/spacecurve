@@ -1,9 +1,5 @@
-.DS_Store
-build
-*.swp
-*.pyc
-*.pyo
-*.swo
-tmp.*
+target
 tmp
-.coverage
+.DS_Store
+plans
+dist
