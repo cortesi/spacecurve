@@ -1,14 +1,6 @@
 # Developer Guide
 
-## Quick Setup
-- Install Rust toolchain.
-- For web work: `uv run ./scripts/setup_web.py` (installs `wasm32-unknown-unknown`, `wasm-server-runner`, `wasm-bindgen-cli`).
-
-## Core Commands
-- Native dev: `cargo run`
-- Native release: `cargo build --release`
-
-### Web Dev
+## Web Dev
 - Live dev server: `uv run ./scripts/serve_web.py` (uses `wasm-server-runner`).
 - Alt: `cargo run --target wasm32-unknown-unknown --bin scurve-web`.
 - Build prod bundle: `uv run ./scripts/build_web.py`.
@@ -40,3 +32,19 @@ Handy for styling checks: run the command above and view the PNG (e.g., with the
 1) `uv run ./scripts/build_web.py`
 2) Serve `dist/` via HTTP (`uv run ./scripts/serve_dist.py 8000` or any static server).
 3) Files: `index.html`, `scurve-web.js`, `scurve-web_bg.wasm`.
+
+## README snippets
+
+Managed with snips: 
+
+```sh
+cargo install snips
+```
+
+Then run:
+
+```sh
+snips ./README.md
+```
+
+

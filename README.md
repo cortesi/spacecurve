@@ -56,7 +56,11 @@ assert_eq!(round_trip, index);
 
 A command-line tool and GUI for generating images of space-filling curves. 
 
-Install with `cargo install scurve`.
+Install with:
+
+```sh
+cargo install scurve
+```
 
 
 # playground

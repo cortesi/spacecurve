@@ -36,7 +36,7 @@ egui = "0.33"
 eframe = "0.33"
 egui_commonmark = "0.22"
 webbrowser = "1.0"
-png = "0.17"
+png = "0.18"
 
 # (Bevy removed; using egui/eframe)
 

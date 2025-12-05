@@ -14,13 +14,7 @@ mod hilbert2;
 mod hilbert_common;
 /// Internal N-D Hilbert helpers.
 mod hilbertn;
-/// Onion curve family operating on L∞ shells.
-///
-/// This module is organized into submodules for clarity:
-/// - `l2`: L=2 specialization (continuous Gray-code)
-/// - `twod`: 2D specialization (continuous spiral)
-/// - `threed`: 3D specialization
-/// - `rect`: Rectangular onion traversal for half-faces
+/// Onion curve family operating on L∞ shells (single consolidated module).
 pub mod onion;
 /// Simple serpentine scan (boustrophedon) traversal.
 pub mod scan;
