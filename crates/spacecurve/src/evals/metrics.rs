@@ -11,11 +11,11 @@ pub fn mean<I: Index>(values: &[I]) -> f64 {
         return f64::NAN;
     }
 
-    let sum: u128 = values
+    let sum: f64 = values
         .iter()
-        .map(|value| value.to_u128().expect("value fits u128"))
+        .map(|value| value.to_f64().expect("value fits f64"))
         .sum();
-    sum as f64 / values.len() as f64
+    sum / values.len() as f64
 }
 
 /// Return the maximum value or NaN when the slice is empty.
@@ -62,4 +62,33 @@ pub fn quantile_r7(sorted: &[f64], probability: f64) -> f64 {
     let lower = sorted[idx.saturating_sub(1)];
     let upper = sorted[idx];
     lower + gamma * (upper - lower)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mean_handles_large_values_without_overflow() {
+        let values = [u128::MAX - 1, u128::MAX - 1];
+        let mean_value = mean(&values);
+        let expected = (u128::MAX - 1) as f64;
+        assert!(mean_value.is_finite());
+        assert!((mean_value - expected).abs() < 1.0);
+    }
+
+    #[test]
+    fn sorted_f64_orders_values() {
+        let values = [5_u32, 2, 4, 1, 3];
+        let sorted = sorted_f64(&values);
+        assert_eq!(sorted, vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+    }
+
+    #[test]
+    fn quantile_r7_matches_reference_values() {
+        let sorted = vec![1.0, 2.0, 3.0, 4.0];
+        assert!((quantile_r7(&sorted, 0.25) - 1.75).abs() < 1e-9);
+        assert!((quantile_r7(&sorted, 0.5) - 2.5).abs() < 1e-9);
+        assert!((quantile_r7(&sorted, 0.75) - 3.25).abs() < 1e-9);
+    }
 }

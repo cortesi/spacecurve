@@ -141,7 +141,50 @@ mod tests {
     use proptest::prelude::*;
 
     use super::{collect_stretches, run};
-    use crate::{curves::scan::Scan, evals::EvalParams, spec::GridSpec};
+    use crate::{
+        curves::scan::Scan, evals::EvalParams, point::Point, spacecurve::SpaceCurve, spec::GridSpec,
+    };
+
+    fn expected_edge_count(dimension: u32, size: u32) -> usize {
+        let dimension = dimension as usize;
+        let size = size as usize;
+        dimension * (size - 1) * size.pow(dimension.saturating_sub(1) as u32)
+    }
+
+    fn brute_force_stretches(curve: &Scan<u32, u32>, dimension: u32, size: u32) -> Vec<u32> {
+        fn visit(
+            curve: &Scan<u32, u32>,
+            dimension: usize,
+            size: u32,
+            coords: &mut Vec<u32>,
+            stretches: &mut Vec<u32>,
+        ) {
+            if coords.len() == dimension {
+                let idx = curve.index(&Point::new(coords.clone()));
+                for axis in 0..dimension {
+                    if coords[axis] + 1 < size {
+                        let mut neighbor = coords.clone();
+                        neighbor[axis] += 1;
+                        let nidx = curve.index(&Point::new(neighbor));
+                        let stretch = nidx.abs_diff(idx);
+                        stretches.push(stretch);
+                    }
+                }
+                return;
+            }
+
+            for value in 0..size {
+                coords.push(value);
+                visit(curve, dimension, size, coords, stretches);
+                coords.pop();
+            }
+        }
+
+        let mut stretches = Vec::new();
+        let mut coords = Vec::with_capacity(dimension as usize);
+        visit(curve, dimension as usize, size, &mut coords, &mut stretches);
+        stretches
+    }
 
     fn metric_value(metrics: &[super::MetricValue], name: &str) -> f64 {
         metrics
@@ -182,6 +225,24 @@ mod tests {
         assert!((p99 - 2.94).abs() < 1e-6, "p99: {p99}");
     }
 
+    #[test]
+    fn collect_stretches_matches_bruteforce_for_scan() {
+        let curve = Scan::<u32, u32>::from_dimensions(2, 3).expect("scan curve");
+        let spec = GridSpec::<u32, u32>::new(2, 3).expect("grid spec");
+        let params = EvalParams {
+            spec,
+            samples: None,
+            seed: 0,
+        };
+
+        let mut actual = collect_stretches(&curve, &params).expect("stretches");
+        let mut expected = brute_force_stretches(&curve, 2, 3);
+        actual.sort_unstable();
+        expected.sort_unstable();
+
+        assert_eq!(actual, expected);
+    }
+
     proptest! {
         #[test]
         fn stretches_are_positive(dimension in 1u32..=4, size in 2u32..=6) {
@@ -196,6 +257,21 @@ mod tests {
             let stretches = collect_stretches(&curve, &params).expect("stretches");
             prop_assert!(!stretches.is_empty());
             prop_assert!(stretches.iter().all(|value| *value >= 1));
+        }
+
+        #[test]
+        fn stretch_count_matches_grid_edges(dimension in 1u32..=4, size in 2u32..=6) {
+            let curve = Scan::<u32, u32>::from_dimensions(dimension, size).expect("scan curve");
+            let spec = GridSpec::<u32, u32>::new(dimension, size).expect("grid spec");
+            let params = EvalParams {
+                spec,
+                samples: None,
+                seed: 0,
+            };
+
+            let stretches = collect_stretches(&curve, &params).expect("stretches");
+            let expected = expected_edge_count(dimension, size);
+            prop_assert_eq!(stretches.len(), expected);
         }
 
         #[test]

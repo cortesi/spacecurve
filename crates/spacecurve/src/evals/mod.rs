@@ -138,10 +138,34 @@ impl Evaluation {
         curve: &dyn SpaceCurve<Coord = C, Index = I>,
         params: &EvalParams<C, I>,
     ) -> error::Result<Vec<MetricValue>> {
+        validate_eval_params(curve, params)?;
         match self {
             Self::Nns => nns::run(curve, params),
         }
     }
+}
+
+/// Validate that the curve matches the evaluation parameters.
+fn validate_eval_params<C: Coord, I: Index>(
+    curve: &dyn SpaceCurve<Coord = C, Index = I>,
+    params: &EvalParams<C, I>,
+) -> error::Result<()> {
+    if curve.dimensions() != params.spec.dimension() {
+        return Err(error::Error::Shape(format!(
+            "curve dimension {} does not match spec dimension {}",
+            curve.dimensions(),
+            params.spec.dimension()
+        )));
+    }
+    let curve_length = curve.length();
+    let spec_length = params.spec.length();
+    if curve_length != spec_length {
+        return Err(error::Error::Size(format!(
+            "curve length {:?} does not match spec length {:?}",
+            curve_length, spec_length
+        )));
+    }
+    Ok(())
 }
 
 /// All supported evaluations in stable ordering.
@@ -161,6 +185,7 @@ pub fn effective_sample_count<I: Index>(length: I, samples: Option<usize>) -> er
         .to_usize()
         .ok_or_else(|| error::Error::Size("curve length exceeds usize".to_string()))?;
     match samples {
+        Some(0) => Err(error::Error::Size("sample count must be >= 1".to_string())),
         Some(count) => Ok(count.min(length)),
         None if length <= DEFAULT_SAMPLE_LIMIT => Ok(length),
         None => Ok(DEFAULT_SAMPLE_LIMIT.min(length)),
@@ -213,4 +238,82 @@ pub(crate) fn grid_neighbors<C: Coord>(point: &Point<C>, size: C) -> Vec<Point<C
     }
 
     neighbors
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{curves::scan::Scan, error::Error};
+
+    #[test]
+    fn effective_sample_count_rejects_zero() {
+        let err = effective_sample_count(8_u32, Some(0)).unwrap_err();
+        assert!(matches!(err, Error::Size(_)));
+    }
+
+    #[test]
+    fn effective_sample_count_defaults_to_limit() -> error::Result<()> {
+        let count = effective_sample_count(10_001_u32, None)?;
+        assert_eq!(count, DEFAULT_SAMPLE_LIMIT);
+        Ok(())
+    }
+
+    #[test]
+    fn sample_indices_returns_full_range_when_unlimited() -> error::Result<()> {
+        let indices = sample_indices(8_u32, None, 0)?;
+        assert_eq!(indices, (0_u32..8).collect::<Vec<_>>());
+        Ok(())
+    }
+
+    #[test]
+    fn sample_indices_rejects_zero_samples() {
+        let err = sample_indices(8_u32, Some(0), 0).unwrap_err();
+        assert!(matches!(err, Error::Size(_)));
+    }
+
+    #[test]
+    fn grid_neighbors_match_expected_2d() {
+        let mut neighbors: Vec<Vec<u32>> = grid_neighbors(&Point::new(vec![0_u32, 0_u32]), 3_u32)
+            .into_iter()
+            .map(Vec::from)
+            .collect();
+        neighbors.sort();
+        assert_eq!(neighbors, vec![vec![0, 1], vec![1, 0]]);
+
+        let mut neighbors: Vec<Vec<u32>> = grid_neighbors(&Point::new(vec![1_u32, 1_u32]), 3_u32)
+            .into_iter()
+            .map(Vec::from)
+            .collect();
+        neighbors.sort();
+        assert_eq!(
+            neighbors,
+            vec![vec![0, 1], vec![1, 0], vec![1, 2], vec![2, 1]]
+        );
+    }
+
+    #[test]
+    fn evaluation_rejects_dimension_mismatch() {
+        let curve = Scan::<u32, u32>::from_dimensions(2, 2).expect("scan curve");
+        let spec = GridSpec::<u32, u32>::new(3, 2).expect("grid spec");
+        let params = EvalParams {
+            spec,
+            samples: None,
+            seed: 0,
+        };
+        let err = Evaluation::Nns.run(&curve, &params).unwrap_err();
+        assert!(matches!(err, Error::Shape(_)));
+    }
+
+    #[test]
+    fn evaluation_rejects_length_mismatch() {
+        let curve = Scan::<u32, u32>::from_dimensions(2, 2).expect("scan curve");
+        let spec = GridSpec::<u32, u32>::new(2, 3).expect("grid spec");
+        let params = EvalParams {
+            spec,
+            samples: None,
+            seed: 0,
+        };
+        let err = Evaluation::Nns.run(&curve, &params).unwrap_err();
+        assert!(matches!(err, Error::Size(_)));
+    }
 }
