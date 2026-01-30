@@ -498,9 +498,68 @@ enum EvalsCommand {
         samples: Option<u32>,
     },
 
+    #[command(about = "Windowed locality (WL∞/WL2) profile metrics")]
+    /// Windowed locality (WL∞/WL2) profile metrics.
+    Wl {
+        #[arg(
+            long = "size",
+            value_name = "N",
+            value_parser = clap::value_parser!(u32).range(1..),
+            help = "Grid side length (for a size^dimension grid)"
+        )]
+        /// Grid side length (for a size^dimension grid).
+        size: u32,
+
+        #[arg(
+            long = "dim",
+            value_name = "D",
+            default_value_t = 2,
+            value_parser = clap::value_parser!(u32).range(1..),
+            help = "Number of dimensions"
+        )]
+        /// Number of dimensions.
+        dim: u32,
+
+        #[arg(
+            long = "segments",
+            value_name = "L1,L2,...",
+            help = "Comma-separated segment lengths (defaults to powers of two)"
+        )]
+        /// Optional comma-separated segment lengths to profile.
+        segments: Option<String>,
+
+        #[arg(
+            long = "mode",
+            value_name = "MODE",
+            default_value = "sample",
+            help = "Scan mode: exact or sample"
+        )]
+        /// Scan mode: exact or sample.
+        mode: WlScanModeArg,
+
+        #[arg(
+            long = "windows-per-len",
+            value_name = "N",
+            default_value_t = 512,
+            value_parser = clap::value_parser!(u32).range(1..),
+            help = "Windows to sample per segment length when mode=sample"
+        )]
+        /// Windows to sample per segment length when mode=sample.
+        windows_per_len: u32,
+    },
+
     #[command(about = "List available evaluation metrics")]
     /// List available evaluation metrics.
     List,
+}
+
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+/// Scan mode selection for WL profiles.
+enum WlScanModeArg {
+    /// Scan every window.
+    Exact,
+    /// Sample windows uniformly.
+    Sample,
 }
 
 /// Print a success message or exit with an error.
@@ -789,6 +848,20 @@ fn main() {
                 EvalsCommand::Nns { size, dim, samples } => {
                     evals::handle_nns(&options, size, dim, samples)
                 }
+                EvalsCommand::Wl {
+                    size,
+                    dim,
+                    segments,
+                    mode,
+                    windows_per_len,
+                } => evals::handle_wl(
+                    &options,
+                    size,
+                    dim,
+                    segments.as_ref(),
+                    mode,
+                    windows_per_len,
+                ),
                 EvalsCommand::List => evals::handle_list(&options),
             };
             if let Err(err) = result {

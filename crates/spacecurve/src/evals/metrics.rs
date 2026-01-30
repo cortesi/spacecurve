@@ -38,6 +38,13 @@ pub fn sorted_f64<I: Index>(values: &[I]) -> Vec<f64> {
     sorted
 }
 
+/// Return sorted values for percentile computation.
+pub fn sorted_f64_values(values: &[f64]) -> Vec<f64> {
+    let mut sorted = values.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+    sorted
+}
+
 /// Compute the R-7 quantile for the already-sorted values.
 pub fn quantile_r7(sorted: &[f64], probability: f64) -> f64 {
     if sorted.is_empty() {

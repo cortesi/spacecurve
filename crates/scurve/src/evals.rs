@@ -10,8 +10,8 @@ use serde::Serialize;
 use spacecurve::{
     DefaultCoord, DefaultIndex,
     evals::{
-        EvalParams, EvalResult, Evaluation, MetricDef, MetricValue, effective_sample_count,
-        evaluations,
+        EvalParams, EvalResult, Evaluation, MetricDef, MetricValue, QUANTILE_METHOD_R7,
+        effective_sample_count, evaluations, wl,
     },
     registry,
     spec::GridSpec,
@@ -49,19 +49,25 @@ pub struct EvalsCommonOptions {
 /// Run `scurve evals list`.
 pub fn handle_list(options: &EvalsCommonOptions) -> Result<()> {
     if options.json {
+        let mut definitions: Vec<JsonEvalDefinition> = evaluations()
+            .iter()
+            .map(|evaluation| JsonEvalDefinition {
+                evaluation: evaluation.key(),
+                title: evaluation.title(),
+                metrics: evaluation
+                    .metric_defs()
+                    .iter()
+                    .map(JsonMetricDef::from)
+                    .collect(),
+            })
+            .collect();
+        definitions.push(JsonEvalDefinition {
+            evaluation: wl::EVAL_KEY,
+            title: wl::EVAL_TITLE,
+            metrics: wl::METRIC_DEFS.iter().map(JsonMetricDef::from).collect(),
+        });
         let output = JsonEvalList {
-            evaluations: evaluations()
-                .iter()
-                .map(|evaluation| JsonEvalDefinition {
-                    evaluation: evaluation.key(),
-                    title: evaluation.title(),
-                    metrics: evaluation
-                        .metric_defs()
-                        .iter()
-                        .map(JsonMetricDef::from)
-                        .collect(),
-                })
-                .collect(),
+            evaluations: definitions,
         };
         println!("{}", serde_json::to_string_pretty(&output)?);
         return Ok(());
@@ -79,6 +85,15 @@ pub fn handle_list(options: &EvalsCommonOptions) -> Result<()> {
                 metric.description,
             ]);
         }
+    }
+
+    for metric in wl::METRIC_DEFS {
+        builder.push_record([
+            wl::EVAL_KEY,
+            metric.name,
+            metric.direction.as_str(),
+            metric.description,
+        ]);
     }
 
     let mut table = builder.build();
@@ -159,6 +174,103 @@ pub fn handle_nns(
     Ok(())
 }
 
+/// Run `scurve evals wl`.
+pub fn handle_wl(
+    options: &EvalsCommonOptions,
+    size: u32,
+    dimension: u32,
+    segments: Option<&String>,
+    mode: crate::WlScanModeArg,
+    windows_per_len: u32,
+) -> Result<()> {
+    let curve_list = parse_csv_list(&options.curves, "curve")?;
+    let metric_list = parse_csv_list(&options.metrics, "metric")?;
+
+    let selected_metrics = resolve_metric_defs(wl::METRIC_DEFS, metric_list.as_deref())?;
+    let _metric_selection = WlMetricSelection::from_defs(&selected_metrics);
+
+    let (mut curves, skipped, used_default) = select_curves(
+        dimension,
+        size,
+        curve_list.as_deref(),
+        options.include_experimental,
+    )?;
+
+    if curves.is_empty() {
+        bail!("no curves available for dimension {dimension}, size {size}");
+    }
+
+    curves.sort_by(|left, right| left.entry.key.cmp(right.entry.key));
+
+    if used_default {
+        emit_skipped_warnings(&skipped);
+    }
+
+    let segment_lengths = match parse_csv_u32_list(segments, "segment length")? {
+        Some(values) => values,
+        None => default_segment_lengths(curves[0].spec.length())?,
+    };
+
+    let scan_mode = match mode {
+        crate::WlScanModeArg::Exact => wl::ScanMode::Exact,
+        crate::WlScanModeArg::Sample => wl::ScanMode::Sample {
+            windows_per_len: windows_per_len as usize,
+            seed: options.seed,
+        },
+    };
+
+    let mut results = Vec::new();
+    let mut segment_lengths_used = None;
+    for selection in curves {
+        let curve = (selection.entry.ctor)(&selection.spec)
+            .with_context(|| format!("failed to construct curve '{}'", selection.entry.key))?;
+        let profile = wl::wl_profile(&*curve, &segment_lengths, scan_mode)
+            .with_context(|| format!("evaluation failed for '{}'", selection.entry.key))?;
+        if profile.rows.is_empty() {
+            bail!(
+                "no valid segment lengths for curve '{}' (length {})",
+                selection.entry.key,
+                selection.spec.length()
+            );
+        }
+        if segment_lengths_used.is_none() {
+            segment_lengths_used = Some(
+                profile
+                    .rows
+                    .iter()
+                    .map(|row| row.segment_len)
+                    .collect::<Vec<_>>(),
+            );
+        }
+        results.push(WlEvalResult {
+            curve: selection.entry.key,
+            profile,
+        });
+    }
+
+    let segment_lengths_used = segment_lengths_used.unwrap_or_else(|| segment_lengths.clone());
+
+    if options.json {
+        let output = JsonWlOutput::new(
+            WlOutputParams {
+                size,
+                dimension,
+                seed: options.seed,
+                mode: scan_mode,
+                segment_lengths: segment_lengths_used,
+            },
+            &selected_metrics,
+            results,
+            if used_default { skipped } else { Vec::new() },
+        );
+        println!("{}", serde_json::to_string_pretty(&output)?);
+        return Ok(());
+    }
+
+    render_wl_table(size, dimension, scan_mode, &selected_metrics, &results)?;
+    Ok(())
+}
+
 /// Parse a comma-separated list, rejecting duplicates and empty values.
 fn parse_csv_list(input: &Option<String>, label: &str) -> Result<Option<Vec<String>>> {
     let Some(raw) = input.as_ref() else {
@@ -186,6 +298,133 @@ fn parse_csv_list(input: &Option<String>, label: &str) -> Result<Option<Vec<Stri
     }
 
     Ok(Some(unique))
+}
+
+/// Parse a comma-separated list of u32 values, rejecting duplicates and empty values.
+fn parse_csv_u32_list(input: Option<&String>, label: &str) -> Result<Option<Vec<u32>>> {
+    let Some(raw) = input else {
+        return Ok(None);
+    };
+
+    let mut items = Vec::new();
+    for item in raw.split(',') {
+        let trimmed = item.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let value: u32 = trimmed
+            .parse()
+            .with_context(|| format!("invalid {label} '{trimmed}'"))?;
+        items.push(value);
+    }
+
+    if items.is_empty() {
+        bail!("{label} list is empty");
+    }
+
+    let mut seen = BTreeSet::new();
+    let mut unique = Vec::new();
+    for value in items {
+        if !seen.insert(value) {
+            bail!("duplicate {label} '{value}'");
+        }
+        unique.push(value);
+    }
+
+    Ok(Some(unique))
+}
+
+/// Compute default segment lengths as powers of two up to the curve length.
+fn default_segment_lengths(length: Index) -> Result<Vec<u32>> {
+    let length_u128 = u128::from(length);
+    if length_u128 == 0 {
+        return Ok(Vec::new());
+    }
+
+    let mut lengths = Vec::new();
+    let mut value: u32 = 1;
+    let max_len = length_u128.min(u128::from(u32::MAX)) as u32;
+    while value <= max_len {
+        lengths.push(value);
+        match value.checked_mul(2) {
+            Some(next) => value = next,
+            None => break,
+        }
+    }
+    if let Some(last) = lengths.last().copied()
+        && last != max_len
+    {
+        lengths.push(max_len);
+    }
+
+    Ok(lengths)
+}
+
+#[derive(Clone, Copy, Debug)]
+/// Selection flags for WL metric columns.
+struct WlMetricSelection {
+    /// Include WL∞ max values (and argmax column).
+    wl_inf_max: bool,
+    /// Include WL∞ mean values.
+    wl_inf_mean: bool,
+    /// Include WL∞ p95 values.
+    wl_inf_p95: bool,
+    /// Include WL2 max values (and argmax column).
+    wl2_max: bool,
+    /// Include WL2 mean values.
+    wl2_mean: bool,
+    /// Include WL2 p95 values.
+    wl2_p95: bool,
+}
+
+impl WlMetricSelection {
+    /// Build a selection from a metric definition list.
+    fn from_defs(defs: &[&MetricDef]) -> Self {
+        let mut selection = Self {
+            wl_inf_max: false,
+            wl_inf_mean: false,
+            wl_inf_p95: false,
+            wl2_max: false,
+            wl2_mean: false,
+            wl2_p95: false,
+        };
+        for def in defs {
+            match def.name {
+                "wl-inf-max" => selection.wl_inf_max = true,
+                "wl-inf-mean" => selection.wl_inf_mean = true,
+                "wl-inf-p95" => selection.wl_inf_p95 = true,
+                "wl2-max" => selection.wl2_max = true,
+                "wl2-mean" => selection.wl2_mean = true,
+                "wl2-p95" => selection.wl2_p95 = true,
+                _ => {}
+            }
+        }
+        selection
+    }
+}
+
+#[derive(Clone, Debug)]
+/// WL profile output for a single curve.
+struct WlEvalResult {
+    /// Curve key.
+    curve: &'static str,
+    /// WL profile data.
+    profile: wl::WlProfile<Index>,
+}
+
+#[derive(Clone, Debug)]
+/// Parameters used to shape WL output payloads.
+struct WlOutputParams {
+    /// Grid side length.
+    size: u32,
+    /// Number of dimensions.
+    dimension: u32,
+    /// RNG seed for sampling.
+    seed: u64,
+    /// Scan mode.
+    mode: wl::ScanMode,
+    /// Segment lengths in the profile.
+    segment_lengths: Vec<u32>,
 }
 
 /// Resolve requested metric names to their definitions.
@@ -355,6 +594,115 @@ fn render_table(
     Ok(())
 }
 
+/// Render WL profile results as a table.
+fn render_wl_table(
+    size: u32,
+    dimension: u32,
+    mode: wl::ScanMode,
+    metrics: &[&MetricDef],
+    results: &[WlEvalResult],
+) -> Result<()> {
+    let mode_label = match mode {
+        wl::ScanMode::Exact => "exact".to_string(),
+        wl::ScanMode::Sample {
+            windows_per_len, ..
+        } => {
+            format!("sample (windows_per_len={windows_per_len})")
+        }
+    };
+
+    let segment_lengths = wl_segment_lengths(results);
+    for (idx, segment_len) in segment_lengths.iter().enumerate() {
+        println!(
+            "{} (size={}, dim={}, mode={}, L={})",
+            wl::EVAL_TITLE,
+            size,
+            dimension,
+            mode_label,
+            segment_len
+        );
+
+        let mut builder = Builder::default();
+        let mut header = Vec::new();
+        header.push("Curve".to_string());
+        for def in metrics {
+            header.push(wl_metric_label(def.name));
+        }
+        builder.push_record(header);
+
+        let mut rows = Vec::new();
+        for result in results {
+            if let Some(row) = result
+                .profile
+                .rows
+                .iter()
+                .find(|row| row.segment_len == *segment_len)
+            {
+                let mut record = Vec::new();
+                let mut row_metrics = Vec::with_capacity(metrics.len());
+                record.push(result.curve.to_string());
+                for def in metrics {
+                    let value = wl_metric_value(row, def.name);
+                    record.push(format_optional_metric(value));
+                    row_metrics.push(value.unwrap_or(f64::NAN));
+                }
+                builder.push_record(record);
+                rows.push(RowValues {
+                    metrics: row_metrics,
+                });
+            }
+        }
+
+        let mut table = builder.build();
+        table.with(Style::modern());
+        if io::stdout().is_terminal() {
+            highlight_best_values(&mut table, metrics, &rows);
+        }
+        println!("{table}");
+        if idx + 1 < segment_lengths.len() {
+            println!();
+        }
+    }
+    Ok(())
+}
+
+/// Collect sorted segment lengths across WL results.
+fn wl_segment_lengths(results: &[WlEvalResult]) -> Vec<u32> {
+    let mut lengths = BTreeSet::new();
+    for result in results {
+        for row in &result.profile.rows {
+            lengths.insert(row.segment_len);
+        }
+    }
+    lengths.into_iter().collect()
+}
+
+/// Display label for WL metric columns.
+fn wl_metric_label(name: &str) -> String {
+    match name {
+        "wl-inf-max" => "WL∞ Max".to_string(),
+        "wl-inf-mean" => "WL∞ Mean".to_string(),
+        "wl-inf-p95" => "WL∞ P95".to_string(),
+        "wl2-max" => "WL2 Max".to_string(),
+        "wl2-mean" => "WL2 Mean".to_string(),
+        "wl2-p95" => "WL2 P95".to_string(),
+        _ => name.to_string(),
+    }
+}
+
+/// Extract a WL metric value from a profile row.
+fn wl_metric_value(row: &wl::WlRow<Index>, name: &str) -> Option<f64> {
+    match name {
+        "wl-inf-max" => Some(row.wl_inf_max),
+        "wl-inf-mean" => row.wl_inf_mean,
+        "wl-inf-p95" => row.wl_inf_p95,
+        "wl2-max" => Some(row.wl2_max),
+        "wl2-mean" => row.wl2_mean,
+        "wl2-p95" => row.wl2_p95,
+        _ => None,
+    }
+}
+
 #[derive(Clone, Debug)]
 /// Numerical row values used to compute highlights.
 struct RowValues {
@@ -410,6 +758,11 @@ fn format_metric(value: f64) -> String {
     } else {
         format!("{value:.2}")
     }
+}
+
+/// Format optional metric values for table display.
+fn format_optional_metric(value: Option<f64>) -> String {
+    value.map(format_metric).unwrap_or_else(|| "-".to_string())
 }
 
 #[derive(Serialize)]
@@ -538,4 +891,141 @@ struct JsonEvalDefinition {
 struct JsonEvalList {
     /// Available evaluations and their metrics.
     evaluations: Vec<JsonEvalDefinition>,
+}
+
+#[derive(Serialize)]
+/// JSON payload for WL evaluation parameters.
+struct JsonWlParams {
+    /// Grid side length.
+    size: Coord,
+    /// Number of dimensions.
+    dimension: u32,
+    /// Segment lengths included in the profile.
+    segment_lengths: Vec<u32>,
+    /// Scan mode label.
+    scan_mode: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Windows sampled per segment length (sample mode only).
+    windows_per_len: Option<usize>,
+    /// RNG seed used for sampling.
+    seed: u64,
+}
+
+#[derive(Serialize)]
+/// JSON payload for a single WL profile row.
+struct JsonWlRow {
+    /// Segment length for this row.
+    segment_len: u32,
+    /// Metric values keyed by name.
+    metrics: BTreeMap<String, f64>,
+}
+
+#[derive(Serialize)]
+/// JSON payload for a single curve's WL profile.
+struct JsonWlResult {
+    /// Curve key.
+    curve: &'static str,
+    /// WL profile rows.
+    rows: Vec<JsonWlRow>,
+}
+
+#[derive(Serialize)]
+/// JSON payload for WL evaluation output.
+struct JsonWlOutput {
+    /// Evaluation key.
+    evaluation: &'static str,
+    /// Evaluation title.
+    title: &'static str,
+    /// Evaluation parameters.
+    parameters: JsonWlParams,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Quantile method label for percentile-producing evaluations.
+    quantile_method: Option<&'static str>,
+    /// Metric definitions included in the output.
+    metric_definitions: Vec<JsonMetricDef>,
+    /// Evaluation results.
+    results: Vec<JsonWlResult>,
+    /// Curves skipped during default selection.
+    skipped: Vec<SkippedCurve>,
+}
+
+impl JsonWlOutput {
+    /// Build a JSON payload from WL profile results.
+    fn new(
+        params: WlOutputParams,
+        metrics: &[&MetricDef],
+        results: Vec<WlEvalResult>,
+        skipped: Vec<SkippedCurve>,
+    ) -> Self {
+        let (scan_mode, windows_per_len) = match params.mode {
+            wl::ScanMode::Exact => ("exact", None),
+            wl::ScanMode::Sample {
+                windows_per_len, ..
+            } => ("sample", Some(windows_per_len)),
+        };
+        let parameters = JsonWlParams {
+            size: params.size,
+            dimension: params.dimension,
+            segment_lengths: params.segment_lengths,
+            scan_mode,
+            windows_per_len,
+            seed: params.seed,
+        };
+
+        let metric_definitions = metrics
+            .iter()
+            .map(|def| JsonMetricDef::from(*def))
+            .collect::<Vec<_>>();
+
+        let metric_selection = WlMetricSelection::from_defs(metrics);
+        let quantile_method = if metric_selection.wl_inf_p95 || metric_selection.wl2_p95 {
+            Some(QUANTILE_METHOD_R7)
+        } else {
+            None
+        };
+
+        let results = results
+            .into_iter()
+            .map(|result| JsonWlResult {
+                curve: result.curve,
+                rows: result
+                    .profile
+                    .rows
+                    .into_iter()
+                    .map(|row| JsonWlRow {
+                        segment_len: row.segment_len,
+                        metrics: wl_metrics_map(&row, metrics),
+                    })
+                    .collect(),
+            })
+            .collect();
+
+        Self {
+            evaluation: wl::EVAL_KEY,
+            title: wl::EVAL_TITLE,
+            parameters,
+            quantile_method,
+            metric_definitions,
+            results,
+            skipped,
+        }
+    }
+}
+
+/// Build a metrics map for a WL row using the selected definitions.
+fn wl_metrics_map(row: &wl::WlRow<Index>, metrics: &[&MetricDef]) -> BTreeMap<String, f64> {
+    let mut map = BTreeMap::new();
+    for def in metrics {
+        let value = match def.name {
+            "wl-inf-max" => Some(row.wl_inf_max),
+            "wl-inf-mean" => row.wl_inf_mean,
+            "wl-inf-p95" => row.wl_inf_p95,
+            "wl2-max" => Some(row.wl2_max),
+            "wl2-mean" => row.wl2_mean,
+            "wl2-p95" => row.wl2_p95,
+            _ => None,
+        };
+        map.insert(def.name.to_string(), value.unwrap_or(f64::NAN));
+    }
+    map
 }

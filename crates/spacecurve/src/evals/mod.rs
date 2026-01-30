@@ -20,6 +20,8 @@ use crate::{
 mod metrics;
 /// Nearest-neighbor stretch evaluation.
 mod nns;
+/// WL∞/WL2 locality profiles.
+pub mod wl;
 
 pub use metrics::QUANTILE_METHOD_R7;
 
