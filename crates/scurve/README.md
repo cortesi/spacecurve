@@ -9,6 +9,7 @@ This is the main CLI application that provides various commands for generating c
 - **Binary file visualization**: Convert binary data into visual patterns using space-filling curves
 - **Pattern generation**: Create maps and visualizations of different curve types
 - **AllRGB generation**: Generate dense color maps using all RGB values
+- **Curve evaluation**: Compare locality metrics across curve families
 - **Interactive GUI**: Launch the GUI interface for real-time exploration
 - **Multiple output formats**: Save results as image files or display interactively
 
@@ -37,6 +38,11 @@ scurve map -s 512 -w 2 -d 16 hilbert
 scurve allrgb -c hilbert zorder
 ```
 
+#### Evaluate Curve Locality Metrics
+```bash
+scurve evals nns --size 64 --dim 2
+```
+
 #### Launch Interactive GUI
 ```bash
 scurve gui
@@ -52,6 +58,9 @@ scurve gui
 - `--fg, --foreground`: Foreground stroke color for `map` (named colours or hex with optional alpha, `#` optional)
 - `--bg, --background`: Background color for `map` (named colours or hex with optional alpha, `#` optional)
 - `-c, --colormap`: Color mapping pattern for AllRGB
+- `--curves` (evals): Comma-separated curve keys to evaluate
+- `--metrics` (evals): Comma-separated metric names to display
+- `--json` (evals): Emit machine-readable JSON output
 - Omit the final `output` path on `map`, `vis`, or `allrgb` to open a native egui preview window
 
 Map dimensions are rounded up to the nearest valid size for the selected curve (e.g., a Hilbert

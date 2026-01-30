@@ -16,6 +16,8 @@
 pub mod curves;
 /// Error types used across the crate.
 pub mod error;
+/// Evaluation metrics for curves.
+pub mod evals;
 /// Internal bit operations shared by curve implementations.
 #[doc(hidden)]
 pub mod ops;

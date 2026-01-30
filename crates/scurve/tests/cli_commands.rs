@@ -1,4 +1,4 @@
-//! Integration tests for CLI commands: vis, map, allrgb, and error handling.
+//! Integration tests for CLI commands: vis, map, allrgb, evals, and error handling.
 
 #![allow(missing_docs, clippy::tests_outside_test_module, deprecated)]
 
@@ -524,6 +524,75 @@ fn allrgb_produces_correct_dimensions() {
     let img = read_image(&output);
     assert_eq!(img.width(), 4096);
     assert_eq!(img.height(), 4096);
+}
+
+// ============================================================================
+// EVALS command tests
+// ============================================================================
+
+#[test]
+fn evals_list_includes_nns_metrics() {
+    let mut cmd = Command::cargo_bin("scurve").expect("binary exists");
+    cmd.arg("evals").arg("list");
+
+    let assert = cmd.assert().success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(stdout.contains("nns"), "expected nns in output");
+    assert!(stdout.contains("nns-mean"), "expected nns-mean in output");
+}
+
+#[test]
+fn evals_nns_json_includes_expected_fields() {
+    let mut cmd = Command::cargo_bin("scurve").expect("binary exists");
+    cmd.arg("evals")
+        .arg("--json")
+        .arg("--curves")
+        .arg("scan")
+        .arg("nns")
+        .arg("--size")
+        .arg("2")
+        .arg("--dim")
+        .arg("2");
+
+    let assert = cmd.assert().success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let value: serde_json::Value = serde_json::from_str(&stdout).expect("json output");
+    assert_eq!(value["evaluation"], "nns");
+    assert_eq!(value["quantile_method"], "r7");
+    assert_eq!(value["parameters"]["size"], 2);
+    assert_eq!(value["results"][0]["curve"], "scan");
+    assert!(value["results"][0]["metrics"]["nns-mean"].is_number());
+}
+
+#[test]
+fn evals_nns_metrics_filter_limits_json() {
+    let mut cmd = Command::cargo_bin("scurve").expect("binary exists");
+    cmd.arg("evals")
+        .arg("--json")
+        .arg("--curves")
+        .arg("scan")
+        .arg("--metrics")
+        .arg("nns-mean")
+        .arg("nns")
+        .arg("--size")
+        .arg("2")
+        .arg("--dim")
+        .arg("2");
+
+    let assert = cmd.assert().success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let value: serde_json::Value = serde_json::from_str(&stdout).expect("json output");
+
+    let metric_defs = value["metric_definitions"]
+        .as_array()
+        .expect("metric definitions array");
+    assert_eq!(metric_defs.len(), 1);
+
+    let metrics = value["results"][0]["metrics"]
+        .as_object()
+        .expect("metrics object");
+    assert!(metrics.contains_key("nns-mean"));
+    assert!(!metrics.contains_key("nns-p50"));
 }
 
 // ============================================================================

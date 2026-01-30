@@ -19,6 +19,8 @@ use spacecurve::registry;
 
 /// CLI command implementations.
 mod cmd;
+/// Evaluation command handlers.
+mod evals;
 /// Rendering helpers shared by the CLI.
 mod map;
 
@@ -419,6 +421,88 @@ enum Commands {
     )]
     /// List supported curves and their constraints.
     ListCurves,
+
+    #[command(about = "Evaluate curve locality metrics")]
+    /// Evaluate curve locality metrics.
+    Evals {
+        #[arg(
+            long = "curves",
+            value_name = "NAMES",
+            help = "Comma-separated curve keys (defaults to all supported curves)"
+        )]
+        /// Optional curve keys to evaluate.
+        curves: Option<String>,
+
+        #[arg(
+            long = "include-experimental",
+            help = "Include experimental curves when using default selection"
+        )]
+        /// Include experimental curves when selecting all curves.
+        include_experimental: bool,
+
+        #[arg(
+            long = "json",
+            help = "Output results as JSON instead of an ASCII table"
+        )]
+        /// Emit JSON output.
+        json: bool,
+
+        #[arg(
+            long = "metrics",
+            value_name = "NAMES",
+            help = "Comma-separated metric names to display (defaults to all)"
+        )]
+        /// Optional metric names to display.
+        metrics: Option<String>,
+
+        #[arg(long = "seed", default_value_t = 0, help = "RNG seed for sampling")]
+        /// RNG seed for reproducible sampling.
+        seed: u64,
+
+        #[command(subcommand)]
+        /// Evaluation to run.
+        command: EvalsCommand,
+    },
+}
+
+#[derive(Subcommand)]
+/// Evaluation subcommands supported by `scurve evals`.
+enum EvalsCommand {
+    #[command(about = "Nearest-neighbor stretch metrics")]
+    /// Nearest-neighbor stretch metrics.
+    Nns {
+        #[arg(
+            long = "size",
+            value_name = "N",
+            value_parser = clap::value_parser!(u32).range(1..),
+            help = "Grid side length (for a size^dimension grid)"
+        )]
+        /// Grid side length (for a size^dimension grid).
+        size: u32,
+
+        #[arg(
+            long = "dim",
+            value_name = "D",
+            default_value_t = 2,
+            value_parser = clap::value_parser!(u32).range(1..),
+            help = "Number of dimensions"
+        )]
+        /// Number of dimensions.
+        dim: u32,
+
+        #[arg(
+            long = "samples",
+            value_name = "N",
+            value_parser = clap::value_parser!(u32).range(1..),
+            help = "Number of points to sample"
+        )]
+        /// Optional number of points to sample.
+        samples: Option<u32>,
+    },
+
+    #[command(about = "List available evaluation metrics")]
+    /// List available evaluation metrics.
+    List,
 }
 
 /// Print a success message or exit with an error.
@@ -686,6 +770,32 @@ fn main() {
         Commands::Gui { dev } => handle_gui(dev),
         Commands::Screenshot { pane, output } => handle_screenshot(pane, output),
         Commands::ListCurves => handle_list_curves(),
+        Commands::Evals {
+            curves,
+            include_experimental,
+            json,
+            metrics,
+            seed,
+            command,
+        } => {
+            let options = evals::EvalsCommonOptions {
+                curves,
+                include_experimental,
+                json,
+                metrics,
+                seed,
+            };
+            let result = match command {
+                EvalsCommand::Nns { size, dim, samples } => {
+                    evals::handle_nns(&options, size, dim, samples)
+                }
+                EvalsCommand::List => evals::handle_list(&options),
+            };
+            if let Err(err) = result {
+                eprintln!("{err}");
+                process::exit(1);
+            }
+        }
     }
 }
 

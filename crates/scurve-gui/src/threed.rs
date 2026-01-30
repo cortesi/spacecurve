@@ -267,10 +267,7 @@ fn draw_3d_space_curve(
     );
 
     compute_connected(original_curve_points, &mut render_cache.cache_connected);
-    compute_shorten_caps(
-        &render_cache.cache_connected,
-        &mut render_cache.cache_caps,
-    );
+    compute_shorten_caps(&render_cache.cache_connected, &mut render_cache.cache_caps);
     build_segment_depths(
         &render_cache.cache_3d_points,
         &render_cache.cache_connected,
