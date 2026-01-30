@@ -19,8 +19,13 @@ pub fn is_adjacent_3d(a: &[u32; 3], b: &[u32; 3]) -> bool {
 
 /// Advance the snake offset by `increment`, wrapping at `curve_length`.
 ///
-/// Returns the new offset value. If `curve_length` is zero or None, returns 0.0.
-pub fn advance_snake_offset(offset: f32, increment: f32, curve_length: Option<u32>) -> f32 {
+/// Returns the new offset value. If `curve_length` is zero, returns 0.0. If
+/// `curve_length` is None, the offset advances without wrapping.
+pub fn advance_snake_offset(
+    offset: f32,
+    increment: f32,
+    curve_length: Option<spacecurve::DefaultIndex>,
+) -> f32 {
     let Some(len) = curve_length else {
         return offset + increment;
     };
@@ -40,7 +45,7 @@ pub fn advance_snake_offset(offset: f32, increment: f32, curve_length: Option<u3
 pub fn calculate_snake_segments(
     snake_offset: f32,
     snake_length_percent: f32,
-    curve_length: u32,
+    curve_length: spacecurve::DefaultIndex,
 ) -> Vec<usize> {
     let mut segments = Vec::new();
     fill_snake_segments(
@@ -57,25 +62,28 @@ pub fn fill_snake_segments(
     out: &mut Vec<usize>,
     snake_offset: f32,
     snake_length_percent: f32,
-    curve_length: u32,
+    curve_length: spacecurve::DefaultIndex,
 ) {
     out.clear();
 
+    let Ok(curve_length) = usize::try_from(curve_length) else {
+        return;
+    };
     if curve_length == 0 {
         return;
     }
 
-    let start_offset = snake_offset as u32;
-    let snake_length = ((snake_length_percent / 100.0) * curve_length as f32).round() as u32;
+    let start_offset = snake_offset as usize;
+    let snake_length = ((snake_length_percent / 100.0) * curve_length as f32).round() as usize;
     let snake_length = snake_length.max(1);
 
-    if out.capacity() < snake_length as usize {
-        out.reserve(snake_length as usize - out.capacity());
+    if out.capacity() < snake_length {
+        out.reserve(snake_length - out.capacity());
     }
 
     for i in 0..snake_length {
         let segment_index = (start_offset + i) % curve_length;
-        out.push(segment_index as usize);
+        out.push(segment_index);
     }
 }
 

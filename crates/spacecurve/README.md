@@ -15,12 +15,19 @@ A Rust library for N-dimensional space-filling curves and spatial indexing.
 *   **High Performance:** Uses `SmallVec` to avoid heap allocations for common 2D/3D points, and optimized SWAR algorithms for bit manipulation.
 *   **Generic:** Supports N-dimensional mappings where applicable.
 
+## Numeric widths
+
+Curves are generic over coordinate and index widths. The default helpers use
+`DefaultCoord` (`u32`) and `DefaultIndex` (`u64`). To opt into other widths,
+call `curve_from_name_typed::<C, I>` or construct a concrete curve type
+directly; there are no runtime width switches.
+
 ## Usage
 
 ```rust
 use std::error::Error;
 
-use spacecurve::{curve_from_name, SpaceCurve};
+use spacecurve::{curve_from_name, curve_from_name_typed, SpaceCurve};
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Create a 2D Hilbert curve of order 3 (8x8 grid)
@@ -31,6 +38,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let index = curve.index(&point);
     assert_eq!(index, 10);
+
+    // Opt into a wider index type for larger grids:
+    let wide = curve_from_name_typed::<u32, u128>("scan", 4, 1024)?;
+    println!("4D scan length: {}", wide.length());
 
     Ok(())
 }

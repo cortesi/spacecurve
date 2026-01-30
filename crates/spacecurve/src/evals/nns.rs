@@ -1,9 +1,10 @@
 use crate::{
-    SpaceCurve,
+    SpaceCurve, error,
     evals::{
         EvalParams, MetricDef, MetricDirection, MetricValue, grid_neighbors, metrics,
         sample_indices,
     },
+    types::{Coord, Index},
 };
 
 /// Metric definitions for nearest-neighbor stretch.
@@ -51,16 +52,19 @@ pub const METRIC_DEFS: &[MetricDef] = &[
 ];
 
 /// Run nearest-neighbor stretch evaluation for a single curve.
-pub fn run(curve: &dyn SpaceCurve, params: &EvalParams) -> Vec<MetricValue> {
-    let stretches = collect_stretches(curve, params);
+pub fn run<C: Coord, I: Index>(
+    curve: &dyn SpaceCurve<Coord = C, Index = I>,
+    params: &EvalParams<C, I>,
+) -> error::Result<Vec<MetricValue>> {
+    let stretches = collect_stretches(curve, params)?;
     if stretches.is_empty() {
-        return METRIC_DEFS
+        return Ok(METRIC_DEFS
             .iter()
             .map(|metric| MetricValue {
                 name: metric.name,
                 value: f64::NAN,
             })
-            .collect();
+            .collect());
     }
 
     let mean = metrics::mean(&stretches);
@@ -74,7 +78,7 @@ pub fn run(curve: &dyn SpaceCurve, params: &EvalParams) -> Vec<MetricValue> {
     let p95 = metrics::quantile_r7(&sorted, 0.95);
     let p99 = metrics::quantile_r7(&sorted, 0.99);
 
-    vec![
+    Ok(vec![
         MetricValue {
             name: "nns-mean",
             value: mean,
@@ -107,13 +111,16 @@ pub fn run(curve: &dyn SpaceCurve, params: &EvalParams) -> Vec<MetricValue> {
             name: "nns-p99",
             value: p99,
         },
-    ]
+    ])
 }
 
 /// Collect stretch values for unique neighbor edges.
-fn collect_stretches(curve: &dyn SpaceCurve, params: &EvalParams) -> Vec<u32> {
+fn collect_stretches<C: Coord, I: Index>(
+    curve: &dyn SpaceCurve<Coord = C, Index = I>,
+    params: &EvalParams<C, I>,
+) -> error::Result<Vec<I>> {
     let spec = params.spec;
-    let sample_indices = sample_indices(spec.length(), params.samples, params.seed);
+    let sample_indices = sample_indices(spec.length(), params.samples, params.seed)?;
     let mut stretches = Vec::new();
 
     for index in sample_indices {
@@ -126,7 +133,7 @@ fn collect_stretches(curve: &dyn SpaceCurve, params: &EvalParams) -> Vec<u32> {
         }
     }
 
-    stretches
+    Ok(stretches)
 }
 
 #[cfg(test)]
@@ -146,15 +153,15 @@ mod tests {
 
     #[test]
     fn scan_2d_size2_metrics_match_expected_values() {
-        let curve = Scan::from_dimensions(2, 2).expect("scan curve");
-        let spec = GridSpec::new(2, 2).expect("grid spec");
+        let curve = Scan::<u32, u32>::from_dimensions(2, 2).expect("scan curve");
+        let spec = GridSpec::<u32, u32>::new(2, 2).expect("grid spec");
         let params = EvalParams {
             spec,
             samples: None,
             seed: 0,
         };
 
-        let metrics = run(&curve, &params);
+        let metrics = run(&curve, &params).expect("metrics");
 
         let mean = metric_value(&metrics, "nns-mean");
         let max = metric_value(&metrics, "nns-max");
@@ -178,30 +185,30 @@ mod tests {
     proptest! {
         #[test]
         fn stretches_are_positive(dimension in 1u32..=4, size in 2u32..=6) {
-            let curve = Scan::from_dimensions(dimension, size).expect("scan curve");
-            let spec = GridSpec::new(dimension, size).expect("grid spec");
+            let curve = Scan::<u32, u32>::from_dimensions(dimension, size).expect("scan curve");
+            let spec = GridSpec::<u32, u32>::new(dimension, size).expect("grid spec");
             let params = EvalParams {
                 spec,
                 samples: None,
                 seed: 0,
             };
 
-            let stretches = collect_stretches(&curve, &params);
+            let stretches = collect_stretches(&curve, &params).expect("stretches");
             prop_assert!(!stretches.is_empty());
             prop_assert!(stretches.iter().all(|value| *value >= 1));
         }
 
         #[test]
         fn percentiles_are_monotonic(dimension in 1u32..=4, size in 2u32..=6) {
-            let curve = Scan::from_dimensions(dimension, size).expect("scan curve");
-            let spec = GridSpec::new(dimension, size).expect("grid spec");
+            let curve = Scan::<u32, u32>::from_dimensions(dimension, size).expect("scan curve");
+            let spec = GridSpec::<u32, u32>::new(dimension, size).expect("grid spec");
             let params = EvalParams {
                 spec,
                 samples: None,
                 seed: 0,
             };
 
-            let metrics = run(&curve, &params);
+            let metrics = run(&curve, &params).expect("metrics");
             let p25 = metric_value(&metrics, "nns-p25");
             let p50 = metric_value(&metrics, "nns-p50");
             let p75 = metric_value(&metrics, "nns-p75");

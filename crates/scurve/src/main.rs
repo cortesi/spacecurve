@@ -88,8 +88,6 @@ fn parse_curve_name(s: &str) -> Result<String, String> {
 /// and optional alpha (RGBA/RRGGBBAA) with or without a leading `#`.
 fn parse_rgba_color(input: &str) -> Result<Rgba<u8>, String> {
     fn parse_hex_rgba(hex: &str) -> Option<Rgba<u8>> {
-        use std::ops::Range;
-
         let raw = hex.trim_start_matches('#');
         if !raw.as_bytes().iter().all(|b| b.is_ascii_hexdigit()) {
             return None;
@@ -678,7 +676,9 @@ fn handle_screenshot(_pane: ScreenshotPane, _output: PathBuf) {
 /// Handle the `list-curves` subcommand.
 fn handle_list_curves() {
     println!("Supported curves (key — display — constraints):");
-    for entry in registry::REGISTRY {
+    for key in registry::curve_names(true) {
+        let entry = registry::find::<spacecurve::DefaultCoord, spacecurve::DefaultIndex>(key)
+            .expect("registry entry");
         println!(
             "- {} — {} — {}",
             entry.key, entry.display, entry.constraints

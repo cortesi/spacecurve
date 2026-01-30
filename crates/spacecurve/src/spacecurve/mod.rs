@@ -2,7 +2,10 @@
 
 use std::fmt;
 
-use crate::point;
+use crate::{
+    point,
+    types::{Coord, Index},
+};
 
 /// SpaceCurve is the core trait for space‑filling curves.
 ///
@@ -16,6 +19,10 @@ use crate::point;
 ///   inputs as undefined behaviour. Implementations retain lightweight
 ///   `debug_assert!` guards for development builds.
 pub trait SpaceCurve: fmt::Debug {
+    /// Coordinate type used by the curve.
+    type Coord: Coord;
+    /// Index type used by the curve.
+    type Index: Index;
     /// A short human-friendly name for this curve.
     ///
     /// This is intended for UI display and logs.
@@ -28,12 +35,12 @@ pub trait SpaceCurve: fmt::Debug {
     fn info(&self) -> &'static str;
     /// Calculate the linear index of an N-dimensional point. The dimension of
     /// the point must match that of the curve.
-    fn index(&self, p: &point::Point) -> u32;
+    fn index(&self, p: &point::Point<Self::Coord>) -> Self::Index;
     /// Calculate the coordinates of a point from a linear index. The returned
     /// point will have a dimension matching that of the curve.
-    fn point(&self, index: u32) -> point::Point;
+    fn point(&self, index: Self::Index) -> point::Point<Self::Coord>;
     /// What is the maximum linear offset supported by this curve?
-    fn length(&self) -> u32;
+    fn length(&self) -> Self::Index;
     /// How many dimensions does the curve have?
     fn dimensions(&self) -> u32;
 }

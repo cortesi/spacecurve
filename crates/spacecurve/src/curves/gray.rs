@@ -1,27 +1,33 @@
-use crate::{error, ops, point::Point, spacecurve::SpaceCurve, spec::GridSpec};
+use crate::{
+    error, ops,
+    point::Point,
+    spacecurve::SpaceCurve,
+    spec::GridSpec,
+    types::{Coord, Index},
+};
 
 /// Gray-code based hypercube traversal (BRGC).
 #[derive(Debug)]
-pub struct Gray {
+pub struct Gray<C: Coord, I: Index> {
     /// Number of dimensions in the grid.
     dimension: u32,
     /// Side length per dimension.
-    size: u32,
+    size: C,
     /// Cached bit width per coordinate (size is always a power of two).
     bits_per_axis: u32,
     /// Cached total number of points in the curve.
-    length: u32,
+    length: I,
 }
 
-impl Gray {
+impl<C: Coord, I: Index> Gray<C, I> {
     /// Construct a `Gray` curve for the given dimensions and side length.
     ///
     /// The dimension and size must each be at least 1, and the size must be a
     /// power of two so the Binary Reflected Gray Code remains bijective across
     /// the hypercube.
-    pub fn from_dimensions(dimension: u32, size: u32) -> error::Result<Self> {
-        let spec = GridSpec::power_of_two(dimension, size)?;
-        spec.require_index_bits_lt(32)?;
+    pub fn from_dimensions(dimension: u32, size: C) -> error::Result<Self> {
+        let spec = GridSpec::<C, I>::power_of_two(dimension, size)?;
+        spec.require_index_bits_lt(I::BITS)?;
 
         Ok(Self {
             dimension: spec.dimension(),
@@ -32,7 +38,9 @@ impl Gray {
     }
 }
 
-impl SpaceCurve for Gray {
+impl<C: Coord, I: Index> SpaceCurve for Gray<C, I> {
+    type Coord = C;
+    type Index = I;
     fn name(&self) -> &'static str {
         "Gray (BRGC)"
     }
@@ -42,7 +50,7 @@ impl SpaceCurve for Gray {
         indices differ by one bit. Requires power-of-two side lengths; fast,\n\
         but spatial locality is weaker than Hilbert/H-curve."
     }
-    fn length(&self) -> u32 {
+    fn length(&self) -> I {
         self.length
     }
 
@@ -50,7 +58,7 @@ impl SpaceCurve for Gray {
         self.dimension
     }
 
-    fn point(&self, index: u32) -> Point {
+    fn point(&self, index: I) -> Point<C> {
         debug_assert!(index < self.length, "index out of range");
 
         // Convert the linear index to Gray code, then deinterleave the bits
@@ -62,7 +70,7 @@ impl SpaceCurve for Gray {
         )
     }
 
-    fn index(&self, p: &Point) -> u32 {
+    fn index(&self, p: &Point<C>) -> I {
         debug_assert_eq!(p.len(), self.dimension as usize, "point dimension mismatch");
         debug_assert!(
             p.iter().all(|&coord| coord < self.size),
@@ -81,7 +89,7 @@ mod tests {
     use super::*;
 
     fn assert_roundtrip(dimension: u32, size: u32) {
-        let gray = Gray::from_dimensions(dimension, size).unwrap();
+        let gray = Gray::<u32, u32>::from_dimensions(dimension, size).unwrap();
         for i in 0..gray.length() {
             let point = gray.point(i);
             assert_eq!(
@@ -92,7 +100,7 @@ mod tests {
         }
     }
 
-    fn assert_adjacency(gray: &Gray) {
+    fn assert_adjacency(gray: &Gray<u32, u32>) {
         for i in 1..gray.length() {
             let prev: Vec<u32> = gray.point(i - 1).into();
             let curr: Vec<u32> = gray.point(i).into();
@@ -117,14 +125,14 @@ mod tests {
 
     #[test]
     fn test_gray_constructor_rejects_invalid_sizes() {
-        assert!(Gray::from_dimensions(0, 2).is_err());
-        assert!(Gray::from_dimensions(2, 0).is_err());
-        assert!(Gray::from_dimensions(2, 3).is_err());
+        assert!(Gray::<u32, u32>::from_dimensions(0, 2).is_err());
+        assert!(Gray::<u32, u32>::from_dimensions(2, 0).is_err());
+        assert!(Gray::<u32, u32>::from_dimensions(2, 3).is_err());
     }
 
     #[test]
     fn test_gray_2d_simple() {
-        let gray = Gray::from_dimensions(2, 4).unwrap();
+        let gray = Gray::<u32, u32>::from_dimensions(2, 4).unwrap();
 
         // Test some basic mappings
         let p0 = gray.point(0);
@@ -151,14 +159,14 @@ mod tests {
 
     #[test]
     fn test_gray_neighbourhood() {
-        let gray2 = Gray::from_dimensions(2, 2).unwrap();
+        let gray2 = Gray::<u32, u32>::from_dimensions(2, 2).unwrap();
         let expected = [vec![0, 0], vec![1, 0], vec![1, 1], vec![0, 1]];
         for (idx, coords) in expected.iter().enumerate() {
             assert_eq!(Vec::<u32>::from(gray2.point(idx as u32)), *coords);
         }
 
         // For 3D hypercube with size 2 ensure adjacency differs by one coordinate.
-        let gray3 = Gray::from_dimensions(3, 2).unwrap();
+        let gray3 = Gray::<u32, u32>::from_dimensions(3, 2).unwrap();
         for i in 1..gray3.length() {
             let prev: Vec<u32> = gray3.point(i - 1).into();
             let curr: Vec<u32> = gray3.point(i).into();
@@ -191,7 +199,7 @@ mod tests {
     #[test]
     fn test_gray_adjacency_dims_up_to_four() {
         for dim in 1..=4 {
-            let curve = Gray::from_dimensions(dim, 2).unwrap();
+            let curve = Gray::<u32, u32>::from_dimensions(dim, 2).unwrap();
             assert_adjacency(&curve);
         }
     }

@@ -7,7 +7,7 @@ use std::{fs::File, ops::Range, path::Path};
 
 use anyhow::{Result, anyhow, bail};
 use gif::{Encoder, Frame, Repeat};
-use spacecurve::{curve_from_name, registry};
+use spacecurve::{DefaultIndex, curve_from_name, registry};
 
 use crate::map::{
     MapPalette, StrokeOptions, draw_chunk_overlay, render_chunk_image, render_map_image,
@@ -121,7 +121,11 @@ fn resolve_curve_dimension(pattern_name: &str, requested_side: u32) -> Result<(u
         bail!("curve dimension must be >= 1");
     }
 
-    let initial_validation = registry::validate(pattern_name, DIMENSION, requested_side);
+    let initial_validation = registry::validate::<spacecurve::DefaultCoord, DefaultIndex>(
+        pattern_name,
+        DIMENSION,
+        requested_side,
+    );
     if initial_validation.is_ok() {
         return Ok((requested_side, false));
     }
@@ -147,7 +151,11 @@ fn resolve_curve_dimension(pattern_name: &str, requested_side: u32) -> Result<(u
         })?;
 
     while candidate > requested_side {
-        match registry::validate(pattern_name, DIMENSION, candidate) {
+        match registry::validate::<spacecurve::DefaultCoord, DefaultIndex>(
+            pattern_name,
+            DIMENSION,
+            candidate,
+        ) {
             Ok(()) => return Ok((candidate, true)),
             Err(err) => {
                 last_err = err;
@@ -188,7 +196,10 @@ pub fn map(
     let (side, adjusted) = resolve_curve_dimension(pattern_name, curve_dimension)?;
     let pattern = curve_from_name(pattern_name, 2, side)?;
     let length = pattern.length();
-    let chunk = chunk.unwrap_or(0..length);
+    let zero = DefaultIndex::from(0u8);
+    let chunk = chunk
+        .map(|range| to_index(range.start)..to_index(range.end))
+        .unwrap_or(zero..length);
 
     if chunk.start >= chunk.end {
         bail!("chunk start must be less than chunk end");
@@ -235,6 +246,8 @@ pub fn snake(options: SnakeOptions<'_>) -> Result<SnakeRender> {
     let (side, adjusted) = resolve_curve_dimension(pattern_name, curve_dimension)?;
     let pattern = curve_from_name(pattern_name, 2, side)?;
     let length = pattern.length();
+    let chunk = to_index(chunk.start)..to_index(chunk.end);
+    let two = DefaultIndex::from(2u8);
 
     if chunk.start >= chunk.end {
         bail!("chunk start must be less than chunk end");
@@ -250,7 +263,7 @@ pub fn snake(options: SnakeOptions<'_>) -> Result<SnakeRender> {
     }
 
     let chunk_len = chunk.end - chunk.start;
-    if chunk_len < 2 {
+    if chunk_len < two {
         bail!("chunk must span at least two points for animation");
     }
 
@@ -268,7 +281,13 @@ pub fn snake(options: SnakeOptions<'_>) -> Result<SnakeRender> {
             },
             ..stroke
         };
-        render_map_image(size, side, 0..length, palette, &*pattern)
+        render_map_image(
+            size,
+            side,
+            DefaultIndex::from(0u8)..length,
+            palette,
+            &*pattern,
+        )
     });
 
     for offset in 0..length {
@@ -321,7 +340,7 @@ pub fn allrgb(pattern_name: &str, colormap_name: &str) -> Result<image::RgbaImag
     for i in 0..pattern.length() {
         let p = pattern.point(i);
         let c = colormap.point(i);
-        if i % 4096 == 0 {
+        if i % DefaultIndex::from(4096u16) == 0 {
             pb.inc();
         }
         imgbuf.put_pixel(
@@ -333,4 +352,9 @@ pub fn allrgb(pattern_name: &str, colormap_name: &str) -> Result<image::RgbaImag
 
     pb.finish();
     Ok(imgbuf)
+}
+
+/// Convert a CLI-provided offset into the default index width.
+fn to_index(value: u32) -> DefaultIndex {
+    DefaultIndex::from(value)
 }

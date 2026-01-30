@@ -6,7 +6,7 @@
 use std::ops::Range;
 
 use image::{Rgba, RgbaImage};
-use spacecurve::SpaceCurve;
+use spacecurve::{DefaultCurve, DefaultIndex};
 
 /// Colors used when rendering a map image.
 #[derive(Clone, Copy, Debug)]
@@ -104,9 +104,9 @@ fn draw_line(
 pub fn render_map_image(
     size: u32,
     side: u32,
-    chunk: Range<u32>,
+    chunk: Range<DefaultIndex>,
     stroke: StrokeOptions,
-    pattern: &dyn SpaceCurve,
+    pattern: &DefaultCurve,
 ) -> RgbaImage {
     render_chunk_image(
         size,
@@ -127,10 +127,10 @@ fn draw_chunk(
     img: &mut RgbaImage,
     size: u32,
     side: u32,
-    start: u32,
-    len: u32,
+    start: DefaultIndex,
+    len: DefaultIndex,
     stroke: StrokeOptions,
-    pattern: &dyn SpaceCurve,
+    pattern: &DefaultCurve,
 ) {
     let stroke_width = stroke.line_width.max(1);
     let margin = 10_u32.saturating_add(stroke_width / 2);
@@ -138,15 +138,18 @@ fn draw_chunk(
 
     let total_points = pattern.length();
     let len = len.min(total_points);
+    let len_usize = usize::try_from(len).unwrap_or(usize::MAX);
+    let two = DefaultIndex::from(2u8);
 
     debug_assert!(len <= total_points, "chunk length exceeds available points");
 
-    if len < 2 || total_points < 2 {
+    if len < two || total_points < two {
         return;
     }
 
     let mut prev = pattern.point(start % total_points);
-    for step in 1..len {
+    for step in 1..len_usize {
+        let step = DefaultIndex::from(step as u64);
         let idx = (start + step) % total_points;
         let next = pattern.point(idx);
         if !stroke.long_edges {
@@ -173,10 +176,10 @@ fn draw_chunk(
 pub fn render_chunk_image(
     size: u32,
     side: u32,
-    start: u32,
-    len: u32,
+    start: DefaultIndex,
+    len: DefaultIndex,
     stroke: StrokeOptions,
-    pattern: &dyn SpaceCurve,
+    pattern: &DefaultCurve,
 ) -> RgbaImage {
     let mut imgbuf: RgbaImage =
         image::ImageBuffer::from_pixel(size, size, stroke.palette.background);
@@ -190,10 +193,10 @@ pub fn draw_chunk_overlay(
     img: &mut RgbaImage,
     size: u32,
     side: u32,
-    start: u32,
-    len: u32,
+    start: DefaultIndex,
+    len: DefaultIndex,
     stroke: StrokeOptions,
-    pattern: &dyn SpaceCurve,
+    pattern: &DefaultCurve,
 ) {
     draw_chunk(img, size, side, start, len, stroke, pattern);
 }
@@ -201,13 +204,13 @@ pub fn draw_chunk_overlay(
 #[cfg(test)]
 mod tests {
     use image::Rgba;
-    use spacecurve::{SpaceCurve, point::Point};
+    use spacecurve::{DefaultCoord, DefaultIndex, SpaceCurve, point::Point};
 
     use super::*;
 
     #[derive(Debug)]
     struct StubPattern {
-        points: Vec<Point>,
+        points: Vec<Point<DefaultCoord>>,
     }
 
     impl StubPattern {
@@ -221,6 +224,9 @@ mod tests {
     }
 
     impl SpaceCurve for StubPattern {
+        type Coord = DefaultCoord;
+        type Index = DefaultIndex;
+
         fn name(&self) -> &'static str {
             "stub"
         }
@@ -229,19 +235,19 @@ mod tests {
             "stub"
         }
 
-        fn index(&self, p: &Point) -> u32 {
+        fn index(&self, p: &Point<DefaultCoord>) -> DefaultIndex {
             self.points
                 .iter()
                 .position(|candidate| candidate == p)
-                .expect("point not found") as u32
+                .expect("point not found") as DefaultIndex
         }
 
-        fn point(&self, index: u32) -> Point {
+        fn point(&self, index: DefaultIndex) -> Point<DefaultCoord> {
             self.points[index as usize].clone()
         }
 
-        fn length(&self) -> u32 {
-            self.points.len() as u32
+        fn length(&self) -> DefaultIndex {
+            self.points.len() as DefaultIndex
         }
 
         fn dimensions(&self) -> u32 {

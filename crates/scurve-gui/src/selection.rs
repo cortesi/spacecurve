@@ -1,4 +1,4 @@
-use spacecurve::{curve_from_name, registry};
+use spacecurve::{DefaultIndex, curve_from_name, registry};
 
 /// Shared cache and selection state for 2D/3D curve panes.
 #[derive(Clone)]
@@ -18,7 +18,7 @@ pub struct CurveSelection<const D: usize> {
     /// Cached integer points for the currently selected curve and size.
     cached_points: Vec<[u32; D]>,
     /// Cached curve length for the currently selected curve and size.
-    cached_length: Option<u32>,
+    cached_length: Option<DefaultIndex>,
 }
 
 impl<const D: usize> Default for CurveSelection<D> {
@@ -56,13 +56,13 @@ impl<const D: usize> CurveSelection<D> {
     }
 
     /// Ensure the cached curve length is available for the current selection.
-    pub fn ensure_curve_length(&mut self) -> Option<u32> {
+    pub fn ensure_curve_length(&mut self) -> Option<DefaultIndex> {
         self.invalidate_if_changed();
         if let Some(len) = self.cached_length {
             return Some(len);
         }
         if !self.cached_points.is_empty() {
-            let len = self.cached_points.len() as u32;
+            let len = self.cached_points.len() as DefaultIndex;
             self.cached_length = Some(len);
             return Some(len);
         }
@@ -87,8 +87,10 @@ impl<const D: usize> CurveSelection<D> {
             || self.cached_points.is_empty()
         {
             if let Ok(pattern) = curve_from_name(&self.name, D as u32, self.size) {
-                let mut pts = Vec::with_capacity(pattern.length() as usize);
-                for i in 0..pattern.length() {
+                let length = pattern.length();
+                let length_usize = usize::try_from(length).ok()?;
+                let mut pts = Vec::with_capacity(length_usize);
+                for i in 0..length {
                     let p = pattern.point(i);
                     let mut arr = [0u32; D];
                     for d in 0..D {
@@ -99,7 +101,7 @@ impl<const D: usize> CurveSelection<D> {
                 self.cached_points = pts;
                 self.cached_name = self.name.clone();
                 self.cached_size = self.size;
-                self.cached_length = Some(pattern.length());
+                self.cached_length = Some(length);
             } else {
                 return None;
             }

@@ -1,23 +1,25 @@
-//! Lightweight N‑dimensional point type used by curve implementations.
+//! Lightweight N-dimensional point type used by curve implementations.
 
 use std::{ops::Deref, vec::Vec};
 
 use smallvec::SmallVec;
 
+use crate::types::Coord;
+
 /// Compact N‑dimensional point wrapper used by curves.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Point(pub SmallVec<[u32; 8]>);
+pub struct Point<C: Coord>(pub SmallVec<[C; 8]>);
 
-impl Point {
+impl<C: Coord> Point<C> {
     /// Create a new `Point` from a backing vector.
-    pub fn new(vec: impl Into<SmallVec<[u32; 8]>>) -> Self {
+    pub fn new(vec: impl Into<SmallVec<[C; 8]>>) -> Self {
         Self(vec.into())
     }
 
     /// Create a new `Point`, asserting the coordinate count matches `dimension`.
     ///
     /// This is a convenience to avoid repeating dimension checks at every callsite.
-    pub fn new_with_dimension(dimension: u32, vec: impl Into<SmallVec<[u32; 8]>>) -> Self {
+    pub fn new_with_dimension(dimension: u32, vec: impl Into<SmallVec<[C; 8]>>) -> Self {
         let coords = vec.into();
         debug_assert_eq!(
             coords.len() as u32,
@@ -44,14 +46,16 @@ impl Point {
 
         let mut tot: u128 = 0;
         for (a, b) in self.0.iter().zip(p2.0.iter()) {
-            let d = (*a as i128 - *b as i128).abs();
-            tot += (d * d) as u128;
+            let a = a.to_u128().expect("coordinate fits into u128");
+            let b = b.to_u128().expect("coordinate fits into u128");
+            let d = a.abs_diff(b);
+            tot += d * d;
         }
         (tot as f64).sqrt()
     }
 
     /// Return the point's coordinates as a slice.
-    pub fn as_slice(&self) -> &[u32] {
+    pub fn as_slice(&self) -> &[C] {
         &self.0
     }
 
@@ -61,20 +65,20 @@ impl Point {
     }
 }
 
-impl From<Point> for Vec<u32> {
-    fn from(val: Point) -> Self {
+impl<C: Coord> From<Point<C>> for Vec<C> {
+    fn from(val: Point<C>) -> Self {
         val.0.to_vec()
     }
 }
 
-impl From<&Point> for Vec<u32> {
-    fn from(val: &Point) -> Self {
+impl<C: Coord> From<&Point<C>> for Vec<C> {
+    fn from(val: &Point<C>) -> Self {
         val.0.to_vec()
     }
 }
 
-impl Deref for Point {
-    type Target = [u32];
+impl<C: Coord> Deref for Point<C> {
+    type Target = [C];
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -87,29 +91,39 @@ mod tests {
 
     #[test]
     fn point() -> error::Result<()> {
-        let v = Point::new(vec![2, 2]);
+        let v = Point::new(vec![2_u32, 2_u32]);
         assert_eq!(v.len(), 2);
         Ok(())
     }
 
     #[test]
     fn distance() -> error::Result<()> {
-        let a = Point::new(vec![2, 2]);
-        let b = Point::new(vec![2, 1]);
+        let a = Point::new(vec![2_u32, 2_u32]);
+        let b = Point::new(vec![2_u32, 1_u32]);
         assert_eq!(a.distance(&b), 1.0);
 
-        let a = Point::new(vec![2, 2]);
-        let b = Point::new(vec![0, 2]);
+        let a = Point::new(vec![2_u32, 2_u32]);
+        let b = Point::new(vec![0_u32, 2_u32]);
         assert_eq!(a.distance(&b), 2.0);
 
-        let a = Point::new(vec![0, 2]);
-        let b = Point::new(vec![0, 0]);
+        let a = Point::new(vec![0_u32, 2_u32]);
+        let b = Point::new(vec![0_u32, 0_u32]);
         assert_eq!(a.distance(&b), 2.0);
 
-        let a = Point::new(vec![0, 2]);
-        let b = Point::new(vec![0, 2]);
+        let a = Point::new(vec![0_u32, 2_u32]);
+        let b = Point::new(vec![0_u32, 2_u32]);
         assert_eq!(a.distance(&b), 0.0);
 
         Ok(())
+    }
+
+    #[test]
+    fn distance_handles_large_u64() {
+        let a = Point::new(vec![u64::MAX, 0]);
+        let b = Point::new(vec![u64::MAX - 2, 0]);
+        assert_eq!(a.distance(&b), 2.0);
+
+        let coords: Vec<u64> = (&a).into();
+        assert_eq!(coords, vec![u64::MAX, 0]);
     }
 }

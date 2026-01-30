@@ -1,9 +1,12 @@
 //! Integration tests checking reflection and continuity properties.
 #[cfg(test)]
 mod tests {
-    use spacecurve::{SpaceCurve, curve_from_name, curves::onion::OnionCurve, error, point::Point};
+    use spacecurve::{
+        DefaultCoord, DefaultCurve, DefaultIndex, SpaceCurve, curve_from_name,
+        curves::onion::OnionCurve, error, point::Point,
+    };
 
-    fn pattern_reflects(pattern_name: &str, p: &dyn SpaceCurve) {
+    fn pattern_reflects(pattern_name: &str, p: &DefaultCurve) {
         for off in 0..p.length() {
             let pt = p.point(off);
             let off2 = p.index(&pt);
@@ -14,7 +17,7 @@ mod tests {
         }
     }
 
-    fn pattern_continuous(pattern_name: &str, p: &dyn SpaceCurve) {
+    fn pattern_continuous(pattern_name: &str, p: &DefaultCurve) {
         for off in 1..p.length() {
             let pt1 = p.point(off);
             let pt2 = p.point(off - 1);
@@ -84,10 +87,10 @@ mod tests {
 
     #[test]
     fn onion_3d_outer_faces_follow_plane_order() -> error::Result<()> {
-        let face = OnionCurve::new(2, 5)?;
-        let cube = OnionCurve::new(3, 5)?;
+        let face = OnionCurve::<DefaultCoord, DefaultIndex>::new(2, 5)?;
+        let cube = OnionCurve::<DefaultCoord, DefaultIndex>::new(3, 5)?;
 
-        for idx in 0..25u32 {
+        for idx in 0..25u64 {
             let p3 = cube.point(idx);
             assert_eq!(p3[0], 0, "Index {} should be on the x=0 face", idx);
 
@@ -103,7 +106,7 @@ mod tests {
 
     #[test]
     fn onion_3d_initial_edge_sequence_matches_definition() -> error::Result<()> {
-        let cube = OnionCurve::new(3, 5)?;
+        let cube = OnionCurve::<DefaultCoord, DefaultIndex>::new(3, 5)?;
 
         // First two faces occupy indices [0, 50).
         assert_eq!(cube.point(0).as_slice(), &[0, 0, 0]);
@@ -115,7 +118,7 @@ mod tests {
         assert_eq!(cube.point(52).as_slice(), &[3, 0, 0]);
 
         // Confirm index lookups for the same coordinates.
-        for (expected, coords) in [(50u32, [1, 0, 0]), (51, [2, 0, 0]), (52, [3, 0, 0])] {
+        for (expected, coords) in [(50u64, [1, 0, 0]), (51, [2, 0, 0]), (52, [3, 0, 0])] {
             let pt = Point::new(coords.to_vec());
             assert_eq!(cube.index(&pt), expected);
         }

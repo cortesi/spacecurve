@@ -1,31 +1,39 @@
 use std::cmp::Ordering;
 
+use crate::types::Index;
+
 /// Quantile method label for R-7 (linear interpolation between closest ranks).
 pub const QUANTILE_METHOD_R7: &str = "r7";
 
 /// Compute the arithmetic mean of the provided values.
-pub fn mean(values: &[u32]) -> f64 {
+pub fn mean<I: Index>(values: &[I]) -> f64 {
     if values.is_empty() {
         return f64::NAN;
     }
 
-    let sum: u64 = values.iter().map(|value| *value as u64).sum();
+    let sum: u128 = values
+        .iter()
+        .map(|value| value.to_u128().expect("value fits u128"))
+        .sum();
     sum as f64 / values.len() as f64
 }
 
 /// Return the maximum value or NaN when the slice is empty.
-pub fn max(values: &[u32]) -> f64 {
+pub fn max<I: Index>(values: &[I]) -> f64 {
     values
         .iter()
         .copied()
         .max()
-        .map(f64::from)
+        .and_then(|value| value.to_f64())
         .unwrap_or(f64::NAN)
 }
 
 /// Return sorted values as `f64` for percentile computation.
-pub fn sorted_f64(values: &[u32]) -> Vec<f64> {
-    let mut sorted: Vec<f64> = values.iter().map(|value| *value as f64).collect();
+pub fn sorted_f64<I: Index>(values: &[I]) -> Vec<f64> {
+    let mut sorted: Vec<f64> = values
+        .iter()
+        .map(|value| value.to_f64().expect("value fits f64"))
+        .collect();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
     sorted
 }

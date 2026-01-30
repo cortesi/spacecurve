@@ -9,7 +9,12 @@ use std::fmt;
 use rand::{SeedableRng, seq::index::sample};
 use rand_chacha::ChaCha8Rng;
 
-use crate::{SpaceCurve, point::Point, spec::GridSpec};
+use crate::{
+    SpaceCurve, error,
+    point::Point,
+    spec::GridSpec,
+    types::{Coord, Index},
+};
 
 /// Distribution helpers shared across evaluations.
 mod metrics;
@@ -73,9 +78,9 @@ pub struct MetricValue {
 
 /// Common parameters for evaluations.
 #[derive(Clone, Copy, Debug)]
-pub struct EvalParams {
+pub struct EvalParams<C: Coord, I: Index> {
     /// Validated grid specification.
-    pub spec: GridSpec,
+    pub spec: GridSpec<C, I>,
     /// Optional sample count (None uses the default sampling strategy).
     pub samples: Option<usize>,
     /// RNG seed for reproducible sampling.
@@ -128,7 +133,11 @@ impl Evaluation {
     }
 
     /// Run the evaluation on a single curve, returning metric values.
-    pub fn run(self, curve: &dyn SpaceCurve, params: &EvalParams) -> Vec<MetricValue> {
+    pub fn run<C: Coord, I: Index>(
+        self,
+        curve: &dyn SpaceCurve<Coord = C, Index = I>,
+        params: &EvalParams<C, I>,
+    ) -> error::Result<Vec<MetricValue>> {
         match self {
             Self::Nns => nns::run(curve, params),
         }
@@ -147,48 +156,58 @@ pub fn evaluations() -> &'static [Evaluation] {
 const DEFAULT_SAMPLE_LIMIT: usize = 10_000;
 
 /// Compute the effective sample count for a curve of length `length`.
-pub fn effective_sample_count(length: u32, samples: Option<usize>) -> usize {
-    let length = length as usize;
+pub fn effective_sample_count<I: Index>(length: I, samples: Option<usize>) -> error::Result<usize> {
+    let length = length
+        .to_usize()
+        .ok_or_else(|| error::Error::Size("curve length exceeds usize".to_string()))?;
     match samples {
-        Some(count) => count.min(length),
-        None if length <= DEFAULT_SAMPLE_LIMIT => length,
-        None => DEFAULT_SAMPLE_LIMIT.min(length),
+        Some(count) => Ok(count.min(length)),
+        None if length <= DEFAULT_SAMPLE_LIMIT => Ok(length),
+        None => Ok(DEFAULT_SAMPLE_LIMIT.min(length)),
     }
 }
 
 /// Sample curve indices without replacement using a deterministic RNG.
-pub(crate) fn sample_indices(length: u32, samples: Option<usize>, seed: u64) -> Vec<u32> {
-    let length = length as usize;
-    let target = effective_sample_count(length as u32, samples);
+pub(crate) fn sample_indices<I: Index>(
+    length: I,
+    samples: Option<usize>,
+    seed: u64,
+) -> error::Result<Vec<I>> {
+    let length_usize = length
+        .to_usize()
+        .ok_or_else(|| error::Error::Size("curve length exceeds usize".to_string()))?;
+    let target = effective_sample_count(length, samples)?;
 
-    if target == length {
-        return (0..length as u32).collect();
+    if target == length_usize {
+        return Ok((0..length_usize)
+            .map(|idx| I::from(idx).expect("index fits target type"))
+            .collect());
     }
 
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let indices = sample(&mut rng, length, target);
-    indices
+    let indices = sample(&mut rng, length_usize, target);
+    Ok(indices
         .into_vec()
         .into_iter()
-        .map(|idx| idx as u32)
-        .collect()
+        .map(|idx| I::from(idx).expect("index fits target type"))
+        .collect())
 }
 
 /// Return in-bounds L1 neighbors for a point in a `size^dimension` grid.
-pub(crate) fn grid_neighbors(point: &Point, size: u32) -> Vec<Point> {
+pub(crate) fn grid_neighbors<C: Coord>(point: &Point<C>, size: C) -> Vec<Point<C>> {
     let dimension = point.dimension() as usize;
     let mut neighbors = Vec::with_capacity(dimension.saturating_mul(2));
 
     for axis in 0..dimension {
         let coord = point[axis];
-        if coord > 0 {
+        if coord > C::zero() {
             let mut coords = point.0.clone();
-            coords[axis] = coord - 1;
+            coords[axis] = coord - C::one();
             neighbors.push(Point::new_with_dimension(dimension as u32, coords));
         }
-        if coord + 1 < size {
+        if coord + C::one() < size {
             let mut coords = point.0.clone();
-            coords[axis] = coord + 1;
+            coords[axis] = coord + C::one();
             neighbors.push(Point::new_with_dimension(dimension as u32, coords));
         }
     }

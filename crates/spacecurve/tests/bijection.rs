@@ -5,11 +5,11 @@
 #![allow(missing_docs, clippy::tests_outside_test_module)]
 
 use proptest::prelude::*;
-use spacecurve::{curve_from_name, registry};
+use spacecurve::{DefaultIndex, curve_from_name, registry};
 
 /// Generate test configurations: (curve_name, dimension, size, max_index).
 /// We use smaller sizes to keep tests fast while still testing the bijection property.
-fn curve_configs() -> Vec<(&'static str, u32, u32, u32)> {
+fn curve_configs() -> Vec<(&'static str, u32, u32, DefaultIndex)> {
     vec![
         // Hilbert (power-of-two, order*dim < 32)
         ("hilbert", 2, 4, 16),   // 4x4 = 16 points
@@ -49,7 +49,7 @@ proptest! {
 
     /// Test bijection property for Hilbert 2D curves.
     #[test]
-    fn bijection_hilbert_2d(index in 0u32..256) {
+    fn bijection_hilbert_2d(index in 0u64..256) {
         let curve = curve_from_name("hilbert", 2, 16).expect("hilbert 2d 16");
         if index < curve.length() {
             let point = curve.point(index);
@@ -60,7 +60,7 @@ proptest! {
 
     /// Test bijection property for Hilbert 3D curves.
     #[test]
-    fn bijection_hilbert_3d(index in 0u32..64) {
+    fn bijection_hilbert_3d(index in 0u64..64) {
         let curve = curve_from_name("hilbert", 3, 4).expect("hilbert 3d 4");
         if index < curve.length() {
             let point = curve.point(index);
@@ -71,7 +71,7 @@ proptest! {
 
     /// Test bijection property for Scan curves.
     #[test]
-    fn bijection_scan(index in 0u32..100) {
+    fn bijection_scan(index in 0u64..100) {
         let curve = curve_from_name("scan", 2, 10).expect("scan 2d 10");
         if index < curve.length() {
             let point = curve.point(index);
@@ -82,7 +82,7 @@ proptest! {
 
     /// Test bijection property for Z-order curves.
     #[test]
-    fn bijection_zorder(index in 0u32..256) {
+    fn bijection_zorder(index in 0u64..256) {
         let curve = curve_from_name("zorder", 2, 16).expect("zorder 2d 16");
         if index < curve.length() {
             let point = curve.point(index);
@@ -93,7 +93,7 @@ proptest! {
 
     /// Test bijection property for H-curve.
     #[test]
-    fn bijection_hcurve(index in 0u32..64) {
+    fn bijection_hcurve(index in 0u64..64) {
         let curve = curve_from_name("hcurve", 2, 8).expect("hcurve 2d 8");
         if index < curve.length() {
             let point = curve.point(index);
@@ -104,7 +104,7 @@ proptest! {
 
     /// Test bijection property for Onion curves.
     #[test]
-    fn bijection_onion(index in 0u32..64) {
+    fn bijection_onion(index in 0u64..64) {
         let curve = curve_from_name("onion", 2, 8).expect("onion 2d 8");
         if index < curve.length() {
             let point = curve.point(index);
@@ -115,7 +115,7 @@ proptest! {
 
     /// Test bijection property for Hairy Onion curves.
     #[test]
-    fn bijection_hairyonion(index in 0u32..64) {
+    fn bijection_hairyonion(index in 0u64..64) {
         let curve = curve_from_name("hairyonion", 2, 8).expect("hairyonion 2d 8");
         if index < curve.length() {
             let point = curve.point(index);
@@ -126,7 +126,7 @@ proptest! {
 
     /// Test bijection property for Gray code curves.
     #[test]
-    fn bijection_gray(index in 0u32..256) {
+    fn bijection_gray(index in 0u64..256) {
         let curve = curve_from_name("gray", 2, 16).expect("gray 2d 16");
         if index < curve.length() {
             let point = curve.point(index);

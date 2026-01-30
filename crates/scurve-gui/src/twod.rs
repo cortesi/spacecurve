@@ -190,11 +190,14 @@ fn draw_2d_canvas(
                     (raw_head_segment, 0.0, screen_points[raw_head_segment])
                 };
 
+            let Ok(curve_length) = u64::try_from(curve_points.len()) else {
+                return;
+            };
             fill_snake_segments(
                 &mut render_cache.snake_segments_2d,
                 snake_offset,
                 shared_settings.snake_length,
-                curve_points.len() as u32,
+                curve_length,
             );
             let snake_segments = &render_cache.snake_segments_2d;
 

@@ -378,11 +378,14 @@ fn draw_3d_space_curve(
                 )
             };
 
+        let Ok(curve_length) = u64::try_from(original_curve_points.len()) else {
+            return;
+        };
         fill_snake_segments(
             &mut render_cache.snake_segments_3d,
             snake_offset,
             shared_settings.snake_length,
-            original_curve_points.len() as u32,
+            curve_length,
         );
         let snake_segments = &render_cache.snake_segments_3d;
 

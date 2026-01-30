@@ -8,6 +8,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use spacecurve::{
+    DefaultCoord, DefaultIndex,
     evals::{
         EvalParams, EvalResult, Evaluation, MetricDef, MetricValue, effective_sample_count,
         evaluations,
@@ -20,6 +21,15 @@ use tabled::{
     builder::Builder,
     settings::{Color, Style, object::Cell},
 };
+
+/// Coordinate type used by CLI evaluations.
+type Coord = DefaultCoord;
+/// Index type used by CLI evaluations.
+type Index = DefaultIndex;
+/// Grid specification alias for CLI evaluations.
+type Spec = GridSpec<Coord, Index>;
+/// Registry entry alias for CLI evaluations.
+type Entry = registry::CurveEntry<Coord, Index>;
 
 /// Common options shared across evaluation commands.
 #[derive(Clone, Debug)]
@@ -89,7 +99,7 @@ pub fn handle_nns(
         bail!("size must be >= 2 for nearest-neighbor evaluation");
     }
 
-    let spec = GridSpec::new(dimension, size)?;
+    let spec = GridSpec::<Coord, Index>::new(dimension, size)?;
     let eval = Evaluation::Nns;
 
     let curve_list = parse_csv_list(&options.curves, "curve")?;
@@ -123,7 +133,9 @@ pub fn handle_nns(
     for selection in curves {
         let curve = (selection.entry.ctor)(&selection.spec)
             .with_context(|| format!("failed to construct curve '{}'", selection.entry.key))?;
-        let metrics = eval.run(&*curve, &params);
+        let metrics = eval
+            .run(&*curve, &params)
+            .with_context(|| format!("evaluation failed for '{}'", selection.entry.key))?;
         let filtered = filter_metric_values(&metrics, &selected_metrics);
         results.push(EvalResult {
             curve: selection.entry.key,
@@ -138,7 +150,7 @@ pub fn handle_nns(
             &selected_metrics,
             results,
             if used_default { skipped } else { Vec::new() },
-        );
+        )?;
         println!("{}", serde_json::to_string_pretty(&output)?);
         return Ok(());
     }
@@ -220,9 +232,9 @@ fn filter_metric_values(values: &[MetricValue], defs: &[&MetricDef]) -> Vec<Metr
 /// Curve entry paired with a validated grid spec.
 struct SelectedCurve {
     /// Curve registry entry.
-    entry: &'static registry::CurveEntry,
+    entry: Entry,
     /// Spec validated for this curve.
-    spec: GridSpec,
+    spec: Spec,
 }
 
 /// Curve skipped due to unsupported grid parameters.
@@ -244,8 +256,8 @@ fn select_curves(
     if let Some(curves) = curves {
         let mut selected = Vec::with_capacity(curves.len());
         for curve in curves {
-            let entry =
-                registry::find(curve).with_context(|| format!("unknown curve '{curve}'"))?;
+            let entry = registry::find::<Coord, Index>(curve)
+                .with_context(|| format!("unknown curve '{curve}'"))?;
             let spec = (entry.build_spec)(dimension, size)
                 .with_context(|| format!("curve '{curve}' does not support the grid"))?;
             selected.push(SelectedCurve { entry, spec });
@@ -255,10 +267,9 @@ fn select_curves(
 
     let mut selected = Vec::new();
     let mut skipped = Vec::new();
-    for entry in registry::REGISTRY {
-        if !include_experimental && entry.experimental {
-            continue;
-        }
+    for key in registry::curve_names(include_experimental) {
+        let entry = registry::find::<Coord, Index>(key)
+            .with_context(|| format!("unknown curve '{key}'"))?;
         match (entry.build_spec)(dimension, size) {
             Ok(spec) => selected.push(SelectedCurve { entry, spec }),
             Err(err) => skipped.push(SkippedCurve {
@@ -281,11 +292,11 @@ fn emit_skipped_warnings(skipped: &[SkippedCurve]) {
 /// Render evaluation results as a comparison table.
 fn render_table(
     eval: Evaluation,
-    params: &EvalParams,
+    params: &EvalParams<Coord, Index>,
     metrics: &[&MetricDef],
     results: &[EvalResult],
 ) -> Result<()> {
-    let sample_count = effective_sample_count(params.spec.length(), params.samples);
+    let sample_count = effective_sample_count(params.spec.length(), params.samples)?;
     println!(
         "{} (size={}, dim={}, samples={})",
         eval.title(),
@@ -405,7 +416,7 @@ fn format_metric(value: f64) -> String {
 /// JSON payload for evaluation parameters.
 struct JsonParams {
     /// Grid side length.
-    size: u32,
+    size: Coord,
     /// Number of dimensions.
     dimension: u32,
     /// Effective sample count.
@@ -468,15 +479,15 @@ impl JsonEvalOutput {
     /// Build a JSON payload from evaluation results.
     fn new(
         eval: Evaluation,
-        params: &EvalParams,
+        params: &EvalParams<Coord, Index>,
         metrics: &[&MetricDef],
         results: Vec<EvalResult>,
         skipped: Vec<SkippedCurve>,
-    ) -> Self {
+    ) -> Result<Self> {
         let parameters = JsonParams {
             size: params.spec.size(),
             dimension: params.spec.dimension(),
-            samples: effective_sample_count(params.spec.length(), params.samples),
+            samples: effective_sample_count(params.spec.length(), params.samples)?,
             seed: params.seed,
         };
 
@@ -499,7 +510,7 @@ impl JsonEvalOutput {
             })
             .collect();
 
-        Self {
+        Ok(Self {
             evaluation: eval.key(),
             title: eval.title(),
             parameters,
@@ -507,7 +518,7 @@ impl JsonEvalOutput {
             metric_definitions,
             results,
             skipped,
-        }
+        })
     }
 }
 
