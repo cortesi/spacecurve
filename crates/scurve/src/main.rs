@@ -548,6 +548,10 @@ enum EvalsCommand {
         windows_per_len: u32,
     },
 
+    #[command(about = "Run all evaluations with default settings")]
+    /// Run all evaluations with default settings.
+    All,
+
     #[command(about = "List available evaluation metrics")]
     /// List available evaluation metrics.
     List,
@@ -862,6 +866,7 @@ fn main() {
                     mode,
                     windows_per_len,
                 ),
+                EvalsCommand::All => evals::handle_all(&options),
                 EvalsCommand::List => evals::handle_list(&options),
             };
             if let Err(err) = result {

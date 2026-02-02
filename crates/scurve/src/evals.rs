@@ -46,6 +46,50 @@ pub struct EvalsCommonOptions {
     pub seed: u64,
 }
 
+/// Run `scurve evals all`.
+pub fn handle_all(options: &EvalsCommonOptions) -> Result<()> {
+    if options.json {
+        bail!("evals all only supports table output");
+    }
+    if options.metrics.is_some() {
+        bail!("evals all does not support metric filtering");
+    }
+
+    let nns_size = 64;
+    let nns_dims = [2_u32, 3, 4, 6];
+    let wl_size = 64;
+    let wl_dims = [2_u32, 3, 6];
+    let wl_segments = "8,16,32".to_string();
+    let wl_mode = crate::WlScanModeArg::Sample;
+    let wl_windows_per_len = 512;
+
+    let mut first = true;
+    for dim in nns_dims {
+        if !first {
+            println!();
+        }
+        handle_nns(options, nns_size, dim, None)?;
+        first = false;
+    }
+
+    for dim in wl_dims {
+        if !first {
+            println!();
+        }
+        handle_wl(
+            options,
+            wl_size,
+            dim,
+            Some(&wl_segments),
+            wl_mode,
+            wl_windows_per_len,
+        )?;
+        first = false;
+    }
+
+    Ok(())
+}
+
 /// Run `scurve evals list`.
 pub fn handle_list(options: &EvalsCommonOptions) -> Result<()> {
     if options.json {
