@@ -173,12 +173,19 @@ fn repo_shell(paths: &RepoPaths) -> Result<Shell> {
 fn web_setup(paths: &RepoPaths) -> Result<()> {
     let sh = repo_shell(paths)?;
 
+    println!("Refreshing web toolchain requirements...");
     cmd!(sh, "rustup target add wasm32-unknown-unknown").run()?;
-    cmd!(sh, "cargo install wasm-server-runner").run()?;
-    cmd!(sh, "cargo install wasm-bindgen-cli").run()?;
+    cmd!(sh, "cargo install -f wasm-server-runner").run()?;
+    cmd!(sh, "cargo install -f wasm-bindgen-cli").run()?;
 
     println!();
     println!("Setup complete.");
+    println!(
+        "If `cargo xtask web serve` reports a wasm-bindgen schema mismatch, rerun this command."
+    );
+    println!(
+        "The dev server uses `wasm-server-runner`, which embeds its own wasm-bindgen support."
+    );
     println!();
     println!("Next steps:");
     println!("  cargo xtask web serve   # Start development server");

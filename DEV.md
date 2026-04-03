@@ -2,7 +2,10 @@
 
 ## Web Dev
 - One-time setup: `cargo xtask web setup`
-- Live dev server: `cargo xtask web serve` (uses `wasm-server-runner`).
+- Re-run setup after `wasm-bindgen` dependency bumps. It force-refreshes both
+  `wasm-server-runner` and `wasm-bindgen-cli`.
+- Live dev server: `cargo xtask web serve` (uses `wasm-server-runner`, not the standalone
+  `wasm-bindgen` binary).
 - Build prod bundle: `cargo xtask web build`.
 - Serve bundle: `cargo xtask web serve-dist 8000` (any HTTP server works; don’t use `file://`).
 
@@ -46,4 +49,3 @@ Then run:
 ```sh
 snips ./README.md
 ```
-

@@ -31,13 +31,16 @@ scurve_gui::gui()?;
    ```bash
    cargo xtask web setup
    ```
+   Re-run this after `wasm-bindgen` dependency bumps so both `wasm-server-runner`
+   and `wasm-bindgen-cli` get refreshed.
 
 2. **Run development server (run from the repository root):**
    ```bash
    cargo xtask web serve
    ```
 
-   Open `http://127.0.0.1:1334` in your browser (uses wasm-server-runner).
+   Open `http://127.0.0.1:1334` in your browser. This path uses
+   `wasm-server-runner`, not the standalone `wasm-bindgen` binary.
 
 ## Dependencies
 
@@ -83,6 +86,8 @@ The crate supports multiple build targets:
 ### Web
 - Rust toolchain with `wasm32-unknown-unknown` target
 - wasm-server-runner for development (installed by `cargo xtask web setup`)
+- Re-run `cargo xtask web setup` after `wasm-bindgen` upgrades to refresh the
+  runner's embedded bindgen support
 - Modern web browser with WebGL2 support
 
 ## Browser Compatibility
