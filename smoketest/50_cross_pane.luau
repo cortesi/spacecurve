@@ -1,5 +1,6 @@
 fixture("spacecurve.default")
 local vp = root()
+vp:wait_for_widget_visible("pane.2d.curve")
 
 -- Select a non-default curve in 2D
 local curve_2d = vp:widget_get("pane.2d.curve")

@@ -1,7 +1,12 @@
 //! GUI application for exploring space‑filling curves using egui/eframe.
 
 use std::{
-    fs::File, io::BufWriter, path::PathBuf, result::Result as StdResult, sync::Arc, time::Duration,
+    fs::File,
+    io::BufWriter,
+    path::PathBuf,
+    result::Result as StdResult,
+    sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use anyhow::Result;
@@ -229,34 +234,87 @@ impl Default for RenderCache {
     }
 }
 
+/// Mutable state that fixture handlers can reset.
+///
+/// Shared between the eframe rendering thread and the DevMCP runtime via
+/// `Arc<Mutex<>>` so that fixture application does not depend on the
+/// windowing system delivering frames.
+pub struct FixtureState {
+    /// 2D selection and cache state.
+    pub selected_curve: SelectedCurve,
+    /// 3D selection and cache state.
+    pub selected_3d_curve: Selected3DCurve,
+    /// Mutable app state shared across panes.
+    pub app_state: AppState,
+    /// Settings shared between panes.
+    pub shared_settings: SharedSettings,
+    /// Transient rendering caches.
+    pub render_cache: RenderCache,
+    /// Last frame time used to compute deltas.
+    pub last_time: Option<f64>,
+    /// CommonMark cache for the About dialog.
+    pub commonmark_cache: egui_commonmark::CommonMarkCache,
+}
+
 /// Root eframe application.
 pub struct ScurveApp {
     /// DevMCP integration handle.
     devmcp: DevMcp,
-    /// 2D selection and cache state.
-    selected_curve: SelectedCurve,
-    /// 3D selection and cache state.
-    selected_3d_curve: Selected3DCurve,
+    /// Shared fixture-resettable state.
+    state: Arc<Mutex<FixtureState>>,
     /// Curves available for selection in this run.
     available_curves: Vec<&'static str>,
-    /// Mutable app state shared across panes.
-    app_state: AppState,
-    /// Transient rendering caches.
-    render_cache: RenderCache,
-    /// Settings shared between panes.
-    shared_settings: SharedSettings,
     /// Active screenshot request state (when running in screenshot mode).
     screenshot: Option<ActiveScreenshot>,
-    /// Last frame time used to compute deltas.
-    last_time: Option<f64>,
-    /// CommonMark cache for the About dialog.
-    commonmark_cache: egui_commonmark::CommonMarkCache,
     /// Whether to show developer diagnostics overlay.
     show_dev_overlay: bool,
 }
 
 /// Result type used when applying named DevMCP fixtures.
 type FixtureResult = StdResult<(), String>;
+
+impl FixtureState {
+    /// Reset to a deterministic baseline.
+    fn reset(&mut self, default_curve: &str) {
+        self.selected_curve = SelectedCurve::with_name(default_curve);
+        self.selected_3d_curve = Selected3DCurve::with_name(default_curve);
+        self.app_state = AppState::default();
+        self.app_state.paused = true;
+        self.render_cache = RenderCache::default();
+        self.shared_settings = SharedSettings {
+            snake_enabled: false,
+            ..SharedSettings::default()
+        };
+        self.last_time = None;
+        self.commonmark_cache = Default::default();
+    }
+
+    /// Apply a named fixture.
+    fn apply_fixture(&mut self, name: &str, default_curve: &str) -> FixtureResult {
+        self.reset(default_curve);
+        match name {
+            "spacecurve.default" => Ok(()),
+            "spacecurve.about" => {
+                self.app_state.about_open = true;
+                Ok(())
+            }
+            "spacecurve.settings.2d" => {
+                self.app_state.settings_dropdown_open = true;
+                Ok(())
+            }
+            "spacecurve.3d" => {
+                self.app_state.current_pane = Pane::ThreeD;
+                Ok(())
+            }
+            "spacecurve.settings.3d" => {
+                self.app_state.current_pane = Pane::ThreeD;
+                self.app_state.settings_dropdown_open = true;
+                Ok(())
+            }
+            _ => Err(format!("unknown fixture: {name}")),
+        }
+    }
+}
 
 /// Fixtures that reset the GUI into known automation baselines.
 fn gui_fixtures() -> Vec<FixtureSpec> {
@@ -287,8 +345,17 @@ fn gui_fixtures() -> Vec<FixtureSpec> {
 }
 
 /// Build the DevMCP handle, optionally attaching the native automation runtime.
-fn build_devmcp(enable_mcp: bool) -> DevMcp {
-    let devmcp = DevMcp::new().fixtures(gui_fixtures());
+fn build_devmcp(enable_mcp: bool, state: &Arc<Mutex<FixtureState>>, default_curve: &str) -> DevMcp {
+    let state_for_handler = Arc::clone(state);
+    let default_curve = default_curve.to_string();
+    let devmcp = DevMcp::new()
+        .fixtures(gui_fixtures())
+        .on_fixture(move |name| {
+            state_for_handler
+                .lock()
+                .expect("fixture state lock")
+                .apply_fixture(name, &default_curve)
+        });
     #[cfg(all(not(target_arch = "wasm32"), feature = "devtools"))]
     if enable_mcp {
         return attach_runtime(devmcp);
@@ -336,7 +403,6 @@ impl ScurveApp {
             .unwrap_or(registry::CURVE_NAMES[0]);
 
         let mut app_state = AppState::default();
-        let render_cache = RenderCache::default();
         let screenshot_config = options.screenshot;
         let mut screenshot_runtime = screenshot_config.as_ref().map(|cfg| ActiveScreenshot {
             output_path: cfg.output_path.clone(),
@@ -369,74 +435,27 @@ impl ScurveApp {
             app_state.paused = true;
         }
 
-        Self {
-            devmcp: build_devmcp(options.enable_mcp),
+        let state = Arc::new(Mutex::new(FixtureState {
             selected_curve: SelectedCurve::with_name(default_curve),
             selected_3d_curve: Selected3DCurve::with_name(default_curve),
-            available_curves,
             app_state,
-            render_cache,
             shared_settings: Default::default(),
-            screenshot: screenshot_runtime.take(),
+            render_cache: RenderCache::default(),
             last_time: None,
             commonmark_cache: Default::default(),
+        }));
+
+        Self {
+            devmcp: build_devmcp(options.enable_mcp, &state, default_curve),
+            state,
+            available_curves,
+            screenshot: screenshot_runtime.take(),
             show_dev_overlay: options.show_dev_overlay,
         }
     }
 
-    /// Return the default visible curve for the current run.
-    fn default_curve_name(&self) -> &'static str {
-        self.available_curves
-            .first()
-            .copied()
-            .unwrap_or(registry::CURVE_NAMES[0])
-    }
-
-    /// Reset automation-facing state to a deterministic baseline.
-    fn reset_for_fixture(&mut self) {
-        let default_curve = self.default_curve_name();
-        self.selected_curve = SelectedCurve::with_name(default_curve);
-        self.selected_3d_curve = Selected3DCurve::with_name(default_curve);
-        self.app_state = AppState::default();
-        self.app_state.paused = true;
-        self.render_cache = RenderCache::default();
-        self.shared_settings = SharedSettings {
-            snake_enabled: false,
-            ..SharedSettings::default()
-        };
-        self.last_time = None;
-        self.commonmark_cache = Default::default();
-    }
-
-    /// Apply a named DevMCP fixture to the live app state.
-    fn apply_fixture(&mut self, name: &str) -> FixtureResult {
-        self.reset_for_fixture();
-
-        match name {
-            "spacecurve.default" => Ok(()),
-            "spacecurve.about" => {
-                self.app_state.about_open = true;
-                Ok(())
-            }
-            "spacecurve.settings.2d" => {
-                self.app_state.settings_dropdown_open = true;
-                Ok(())
-            }
-            "spacecurve.3d" => {
-                self.app_state.current_pane = Pane::ThreeD;
-                Ok(())
-            }
-            "spacecurve.settings.3d" => {
-                self.app_state.current_pane = Pane::ThreeD;
-                self.app_state.settings_dropdown_open = true;
-                Ok(())
-            }
-            _ => Err(format!("unknown fixture: {name}")),
-        }
-    }
-
     /// Render the top menu bar with title, tabs, and About button.
-    fn show_menu_bar(&mut self, ui: &mut egui::Ui) {
+    fn show_menu_bar(&self, s: &mut FixtureState, ui: &mut egui::Ui) {
         eguidev::container(ui, "app.menu_bar", |ui| {
             egui::Panel::top("menu_bar")
                 .frame(egui::Frame::new().inner_margin(egui::Margin {
@@ -465,14 +484,14 @@ impl ScurveApp {
                         let tab_text_size = 15.0;
                         ui.dev_selectable_value(
                             "app.tab.2d",
-                            &mut self.app_state.current_pane,
+                            &mut s.app_state.current_pane,
                             Pane::TwoD,
                             egui::RichText::new("2D").size(tab_text_size),
                         );
                         ui.add_space(theme::menu_bar::TAB_SPACING);
                         ui.dev_selectable_value(
                             "app.tab.3d",
-                            &mut self.app_state.current_pane,
+                            &mut s.app_state.current_pane,
                             Pane::ThreeD,
                             egui::RichText::new("3D").size(tab_text_size),
                         );
@@ -480,7 +499,7 @@ impl ScurveApp {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.add_space(theme::menu_bar::BUTTON_PADDING);
                             if ui.dev_button("app.about.toggle", "About").clicked() {
-                                self.app_state.about_open = !self.app_state.about_open;
+                                s.app_state.about_open = !s.app_state.about_open;
                             }
                         });
                     });
@@ -524,7 +543,7 @@ impl ScurveApp {
     }
 
     /// Smooth and store the latest frame time (ms) for dev overlay.
-    fn update_frame_time(&mut self, delta_seconds: f32, now_seconds: f64) {
+    fn update_frame_time(&self, s: &mut FixtureState, delta_seconds: f32, now_seconds: f64) {
         const DISPLAY_INTERVAL_S: f64 = 0.25;
 
         if !self.show_dev_overlay {
@@ -532,36 +551,36 @@ impl ScurveApp {
         }
 
         let ms = delta_seconds * 1000.0;
-        let smoothed = match self.app_state.frame_time_ms {
+        let smoothed = match s.app_state.frame_time_ms {
             Some(prev) => prev * 0.85 + ms * 0.15,
             None => ms,
         };
-        self.app_state.frame_time_ms = Some(smoothed);
+        s.app_state.frame_time_ms = Some(smoothed);
 
         // Latch the display value at a slower cadence for readability
-        let should_update = match self.app_state.frame_time_last_display_s {
+        let should_update = match s.app_state.frame_time_last_display_s {
             Some(last) => now_seconds - last >= DISPLAY_INTERVAL_S,
             None => true,
         };
 
         if should_update {
-            self.app_state.frame_time_display_ms = Some(smoothed);
-            self.app_state.frame_time_last_display_s = Some(now_seconds);
+            s.app_state.frame_time_display_ms = Some(smoothed);
+            s.app_state.frame_time_last_display_s = Some(now_seconds);
         }
     }
 
     /// Render a lightweight developer overlay showing smoothed frame time.
-    fn show_frame_time_overlay(&self, ctx: &egui::Context) {
-        let Some(ms) = self
+    fn show_frame_time_overlay(&self, s: &FixtureState, ctx: &egui::Context) {
+        let Some(ms) = s
             .app_state
             .frame_time_display_ms
-            .or(self.app_state.frame_time_ms)
+            .or(s.app_state.frame_time_ms)
         else {
             return;
         };
         let fps = if ms > 0.0 { 1000.0 / ms } else { 0.0 };
 
-        let pos = if let Some(rect) = self.render_cache.last_canvas_rect {
+        let pos = if let Some(rect) = s.render_cache.last_canvas_rect {
             egui::pos2(rect.max.x - 12.0, rect.min.y + 12.0)
         } else {
             // Fallback to top-right of the window if no canvas was drawn yet
@@ -598,26 +617,26 @@ impl ScurveApp {
     }
 
     /// Render the active main pane into the remaining content area.
-    fn show_current_pane(&mut self, ui: &mut egui::Ui) {
-        egui::CentralPanel::default().show_inside(ui, |ui| match self.app_state.current_pane {
+    fn show_current_pane(&self, s: &mut FixtureState, ui: &mut egui::Ui) {
+        egui::CentralPanel::default().show_inside(ui, |ui| match s.app_state.current_pane {
             Pane::TwoD => {
                 show_2d_pane(
                     ui,
-                    &mut self.app_state,
-                    &mut self.render_cache,
-                    &mut self.selected_curve,
+                    &mut s.app_state,
+                    &mut s.render_cache,
+                    &mut s.selected_curve,
                     &self.available_curves,
-                    &mut self.shared_settings,
+                    &mut s.shared_settings,
                 );
             }
             Pane::ThreeD => {
                 show_3d_pane(
                     ui,
-                    &mut self.app_state,
-                    &mut self.render_cache,
-                    &mut self.selected_3d_curve,
+                    &mut s.app_state,
+                    &mut s.render_cache,
+                    &mut s.selected_3d_curve,
                     &self.available_curves,
-                    &mut self.shared_settings,
+                    &mut s.shared_settings,
                 );
             }
         });
@@ -626,26 +645,28 @@ impl ScurveApp {
 
 impl eframe::App for ScurveApp {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let mut guard = self.state.lock().expect("fixture state lock");
+        let s = &mut *guard;
         // Compute delta time using egui input time
         let now = ctx.input(|i| i.time);
-        if let Some(prev) = self.last_time {
+        if let Some(prev) = s.last_time {
             let delta = (now - prev) as f32;
             let clamped_delta = delta.max(0.0);
-            self.update_frame_time(clamped_delta, now);
+            self.update_frame_time(s, clamped_delta, now);
             AnimationController::update(
                 clamped_delta,
-                &mut self.app_state,
-                &self.shared_settings,
-                &mut self.selected_curve,
-                &mut self.selected_3d_curve,
+                &mut s.app_state,
+                &s.shared_settings,
+                &mut s.selected_curve,
+                &mut s.selected_3d_curve,
             );
         }
-        self.last_time = Some(now);
+        s.last_time = Some(now);
 
         // Only request a repaint when there is time-based animation to show
-        let needs_repaint = self.shared_settings.snake_enabled
-            || (self.app_state.current_pane == Pane::ThreeD
-                && (!self.app_state.paused || self.app_state.mouse_dragging))
+        let needs_repaint = s.shared_settings.snake_enabled
+            || (s.app_state.current_pane == Pane::ThreeD
+                && (!s.app_state.paused || s.app_state.mouse_dragging))
             || self.devmcp.is_enabled();
         if needs_repaint {
             ctx.request_repaint();
@@ -656,49 +677,39 @@ impl eframe::App for ScurveApp {
 
         // Synchronize selection between panes based on the active pane
         AnimationController::sync_panes(
-            self.app_state.current_pane,
-            &mut self.selected_curve,
-            &mut self.selected_3d_curve,
+            s.app_state.current_pane,
+            &mut s.selected_curve,
+            &mut s.selected_3d_curve,
             &self.available_curves,
         );
+        drop(guard);
 
         self.handle_screenshot(ctx);
     }
 
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let mut fixture_applied = false;
-        for request in self.devmcp.collect_fixture_requests() {
-            let result = self.apply_fixture(&request.name);
-            if !request.respond(result) {
-                eprintln!("spacecurve: fixture response channel closed");
-            }
-            fixture_applied = true;
-        }
-
-        if fixture_applied {
-            ctx.request_repaint();
-        }
-    }
+    fn update(&mut self, _ctx: &egui::Context, _frame: &mut eframe::Frame) {}
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         let devmcp = self.devmcp.clone();
         let _guard = FrameGuard::new(&devmcp, &ctx);
-        self.show_menu_bar(ui);
+        let mut guard = self.state.lock().expect("fixture state lock");
+        let s = &mut *guard;
+        self.show_menu_bar(s, ui);
 
         // Show About dialog if open
-        if self.app_state.about_open {
+        if s.app_state.about_open {
             about::show_about_dialog(
                 ui.ctx(),
-                &mut self.app_state.about_open,
-                &mut self.commonmark_cache,
+                &mut s.app_state.about_open,
+                &mut s.commonmark_cache,
             );
         }
 
-        self.show_current_pane(ui);
+        self.show_current_pane(s, ui);
 
         if self.show_dev_overlay {
-            self.show_frame_time_overlay(ui.ctx());
+            self.show_frame_time_overlay(s, ui.ctx());
         }
     }
 

@@ -1,5 +1,6 @@
 fixture("spacecurve.3d")
 local vp = root()
+vp:wait_for_widget_visible("pane.3d.curve")
 
 local curve = vp:widget_get("pane.3d.curve")
 local state = curve:state()
@@ -20,6 +21,7 @@ end
 -- Verify all 3D sizes render for the default curve
 fixture("spacecurve.3d")
 vp = root()
+vp:wait_for_widget_visible("pane.3d.size")
 
 local size = vp:widget_get("pane.3d.size")
 local size_state = size:state()

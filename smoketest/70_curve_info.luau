@@ -1,5 +1,6 @@
 fixture("spacecurve.default")
 local vp = root()
+vp:wait_for_widget_visible("pane.2d.curve.info_toggle")
 
 -- Open the curve info panel
 vp:widget_get("pane.2d.curve.info_toggle"):click()
@@ -41,6 +42,7 @@ assert(
 -- Test 3D info panel
 fixture("spacecurve.3d")
 vp = root()
+vp:wait_for_widget_visible("pane.3d.curve.info_toggle")
 
 vp:widget_get("pane.3d.curve.info_toggle"):click()
 vp:wait_for_widget_visible("pane.3d.curve.info_pane")

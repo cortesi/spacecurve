@@ -1,5 +1,6 @@
 fixture("spacecurve.default")
 local vp = root()
+vp:wait_for_widget_visible("pane.2d.curve")
 
 local curve = vp:widget_get("pane.2d.curve")
 local curve_state = curve:state()
