@@ -44,10 +44,3 @@ vp:widget_get("settings.spin_speed"):set_value(25)
 vp:wait_for_widget("settings.spin_speed", function(widget)
     return widget.value == 25
 end)
-
-return {
-    curve_index = 1,
-    size_index = 2,
-    opacity = 80,
-    spin_speed = 25,
-}

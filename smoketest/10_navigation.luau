@@ -21,7 +21,3 @@ vp:wait_for_widget_absent("dialog.about")
 
 vp:widget_get("app.tab.2d"):click()
 vp:wait_for_widget_visible("pane.2d.canvas")
-
-return {
-    resumed = resumed.selected,
-}

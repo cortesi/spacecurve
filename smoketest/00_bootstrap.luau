@@ -23,8 +23,3 @@ local curve = vp:widget_get("pane.2d.curve"):state()
 assert(curve.role == "combo_box", "2D curve selector should be a combo box")
 assert(curve.options ~= nil, "2D curve selector should expose options")
 assert(#(curve.options :: { string }) >= 1, "2D curve selector should not be empty")
-
-return {
-    fixtures = #available,
-    default_curve = ((curve.options :: { string })[(curve.value :: number) + 1]),
-}
