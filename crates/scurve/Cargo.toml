@@ -18,6 +18,7 @@ workspace = true
 default = []
 # Enable screenshot mode for the GUI
 screenshot = ["scurve-gui/__screenshot"]
+devtools = ["scurve-gui/devtools"]
 
 # CLI binary
 [[bin]]

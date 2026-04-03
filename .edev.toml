@@ -1,0 +1,26 @@
+[app]
+cwd = "."
+command = [
+  "cargo",
+  "run",
+  "--quiet",
+  "-p",
+  "scurve",
+  "--features",
+  "devtools",
+  "--",
+  "gui",
+  "--dev-mcp",
+]
+env = {}
+
+[smoke]
+suite_dir = "./smoketest"
+suite_timeout_secs = 600
+script_timeout_secs = 60
+fail_fast = false
+args = {}
+
+[mcp]
+verbose = false
+idle_shutdown_after_secs = 1200

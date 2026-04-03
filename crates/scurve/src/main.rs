@@ -393,6 +393,13 @@ enum Commands {
         )]
         /// Enable experimental curves in the GUI selectors.
         dev: bool,
+
+        #[arg(
+            long = "dev-mcp",
+            help = "Enable the embedded eguidev runtime for automation"
+        )]
+        /// Enable the embedded DevMCP runtime for automation.
+        dev_mcp: bool,
     },
 
     #[command(about = "Take a screenshot of the GUI (requires --features screenshot)")]
@@ -694,11 +701,12 @@ fn handle_allrgb(pattern: &str, colormap: Option<&str>, output: Option<&Path>) -
 }
 
 /// Handle the `gui` subcommand.
-fn handle_gui(dev: bool) {
+fn handle_gui(dev: bool, dev_mcp: bool) {
     report_ok(
         scurve_gui::gui_with_options(scurve_gui::GuiOptions {
             include_experimental_curves: dev,
             show_dev_overlay: dev,
+            enable_mcp: dev_mcp,
             ..scurve_gui::GuiOptions::default()
         }),
         "OK!",
@@ -830,7 +838,7 @@ fn main() {
             }),
             "Saved snake GIF!",
         ),
-        Commands::Gui { dev } => handle_gui(dev),
+        Commands::Gui { dev, dev_mcp } => handle_gui(dev, dev_mcp),
         Commands::Screenshot { pane, output } => handle_screenshot(pane, output),
         Commands::ListCurves => handle_list_curves(),
         Commands::Evals {

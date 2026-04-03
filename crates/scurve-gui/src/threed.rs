@@ -2,6 +2,7 @@ use egui::{
     self,
     epaint::{PathShape, Stroke, Vertex},
 };
+use eguidev::{WidgetMeta, WidgetRole};
 
 // pattern_from_name used in caching method only; no direct use here
 use super::{AppState, widgets};
@@ -126,106 +127,116 @@ pub fn show_3d_pane(
     available_curves: &[&str],
     shared_settings: &mut crate::SharedSettings,
 ) {
-    // Repaints are requested conditionally from the app loop
+    eguidev::container(ui, "pane.3d", |ui| {
+        egui::Frame::new()
+            .inner_margin(egui::Margin {
+                left: theme::control_bar::PADDING_HORIZONTAL as i8,
+                right: theme::control_bar::PADDING_HORIZONTAL as i8,
+                top: theme::control_bar::PADDING_VERTICAL as i8,
+                bottom: theme::control_bar::PADDING_VERTICAL as i8,
+            })
+            .show(ui, |ui| {
+                eguidev::container(ui, "pane.3d.toolbar", |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            egui::RichText::new("Curve:")
+                                .size(theme::font_size::INFO)
+                                .color(theme::TEXT_DIM),
+                        );
+                        widgets::curve_selector_combo(
+                            ui,
+                            &mut selected_3d_curve.name,
+                            available_curves,
+                            widgets::CurveSelectorConfig {
+                                widget_id: "pane.3d.curve",
+                                id_salt: "3d_curve_selector",
+                                info_open: &mut selected_3d_curve.info_open,
+                                dim: 3,
+                                size: selected_3d_curve.size,
+                            },
+                        );
 
-    // Secondary control bar with lighter visual weight
-    egui::Frame::new()
-        .inner_margin(egui::Margin {
-            left: theme::control_bar::PADDING_HORIZONTAL as i8,
-            right: theme::control_bar::PADDING_HORIZONTAL as i8,
-            top: theme::control_bar::PADDING_VERTICAL as i8,
-            bottom: theme::control_bar::PADDING_VERTICAL as i8,
-        })
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                // Use smaller, dimmer text for control labels
-                ui.label(
-                    egui::RichText::new("Curve:")
-                        .size(theme::font_size::INFO)
-                        .color(theme::TEXT_DIM),
-                );
-                widgets::curve_selector_combo(
-                    ui,
-                    &mut selected_3d_curve.name,
-                    available_curves,
-                    "3d_curve_selector",
-                    &mut selected_3d_curve.info_open,
-                    3,
-                    selected_3d_curve.size,
-                );
+                        ui.separator();
 
-                ui.separator();
+                        ui.label(
+                            egui::RichText::new("Size:")
+                                .size(theme::font_size::INFO)
+                                .color(theme::TEXT_DIM),
+                        );
+                        widgets::size_selector_3d(
+                            ui,
+                            &mut selected_3d_curve.size,
+                            "3d_size_selector",
+                            "pane.3d.size",
+                        );
 
-                ui.label(
-                    egui::RichText::new("Size:")
-                        .size(theme::font_size::INFO)
-                        .color(theme::TEXT_DIM),
-                );
-                widgets::size_selector_3d(ui, &mut selected_3d_curve.size, "3d_size_selector");
-
-                // Add pause button and settings on the right side of the controls
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    widgets::settings_dropdown(
-                        ui,
-                        &mut app_state.settings_dropdown_open,
-                        &mut app_state.settings_dropdown_pos,
-                        shared_settings,
-                        true, // Include spin speed for 3D view
-                    );
-                    ui.add_space(theme::spacing::SMALL);
-                    widgets::pause_play_button(ui, &mut app_state.paused);
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            widgets::settings_dropdown(
+                                ui,
+                                &mut app_state.settings_dropdown_open,
+                                &mut app_state.settings_dropdown_pos,
+                                shared_settings,
+                                true,
+                                "pane.3d.settings.toggle",
+                            );
+                            ui.add_space(theme::spacing::SMALL);
+                            widgets::pause_play_button(ui, &mut app_state.paused, "pane.3d.pause");
+                        });
+                    });
                 });
             });
-        });
 
-    ui.separator();
+        ui.separator();
 
-    let available_rect = ui.available_rect_before_wrap();
-    render_cache.last_canvas_rect = Some(available_rect);
-    let bg = theme::CANVAS_BACKGROUND;
-    let painter = ui.painter_at(available_rect);
-    painter.rect_filled(available_rect, 0.0, bg);
+        let available_rect = ui.available_rect_before_wrap();
+        render_cache.last_canvas_rect = Some(available_rect);
+        let bg = theme::CANVAS_BACKGROUND;
+        let painter = ui.painter_at(available_rect);
+        painter.rect_filled(available_rect, 0.0, bg);
 
-    // Draw 3D space-filling curve using 2D painting, using cached points
-    // Capture values that will be needed while we hold a borrow during caching
-    let curve_size = selected_3d_curve.size;
-    let snake_offset = selected_3d_curve.snake_offset;
-    if let Some(points3d) = selected_3d_curve.ensure_cached_points() {
-        draw_3d_space_curve(
-            &painter,
-            available_rect,
-            app_state,
-            render_cache,
-            shared_settings,
-            points3d,
-            curve_size,
-            snake_offset,
+        let curve_size = selected_3d_curve.size;
+        let snake_offset = selected_3d_curve.snake_offset;
+        if let Some(points3d) = selected_3d_curve.ensure_cached_points() {
+            draw_3d_space_curve(
+                &painter,
+                available_rect,
+                app_state,
+                render_cache,
+                shared_settings,
+                points3d,
+                curve_size,
+                snake_offset,
+            );
+        }
+
+        let response = ui.allocate_rect(available_rect, egui::Sense::click_and_drag());
+        eguidev::track_response_full(
+            "pane.3d.canvas",
+            &response,
+            WidgetMeta {
+                role: WidgetRole::Unknown,
+                label: Some("3D canvas".to_string()),
+                visible: true,
+                ..Default::default()
+            },
         );
-    }
 
-    // Handle mouse interaction for manual rotation control
-    let response = ui.allocate_rect(available_rect, egui::Sense::click_and_drag());
+        if response.hovered() && ui.input(|i| i.pointer.primary_down()) {
+            if !app_state.mouse_dragging {
+                app_state.mouse_dragging = true;
+                app_state.last_mouse_x = response.interact_pointer_pos().unwrap_or_default().x;
+            }
 
-    if response.hovered() && ui.input(|i| i.pointer.primary_down()) {
-        // Mouse button is down - pause rotation immediately
-        if !app_state.mouse_dragging {
-            app_state.mouse_dragging = true;
-            app_state.last_mouse_x = response.interact_pointer_pos().unwrap_or_default().x;
+            if response.dragged() {
+                let current_mouse_x = response.interact_pointer_pos().unwrap_or_default().x;
+                let delta_x = current_mouse_x - app_state.last_mouse_x;
+                app_state.rotation_angle += delta_x * theme::canvas_3d::DRAG_SENSITIVITY;
+                app_state.last_mouse_x = current_mouse_x;
+            }
+        } else if app_state.mouse_dragging {
+            app_state.mouse_dragging = false;
         }
-
-        // If dragging, apply manual rotation
-        if response.dragged() {
-            let current_mouse_x = response.interact_pointer_pos().unwrap_or_default().x;
-            let delta_x = current_mouse_x - app_state.last_mouse_x;
-
-            // Apply manual rotation (scale the mouse movement)
-            app_state.rotation_angle += delta_x * theme::canvas_3d::DRAG_SENSITIVITY;
-            app_state.last_mouse_x = current_mouse_x;
-        }
-    } else if app_state.mouse_dragging {
-        // Mouse button released - resume automatic rotation
-        app_state.mouse_dragging = false;
-    }
+    });
 }
 
 /// Render the 3D curve and overlays into the given rect.

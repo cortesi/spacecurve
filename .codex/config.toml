@@ -1,0 +1,5 @@
+[mcp_servers.spacecurve]
+command = "edev"
+args = ["mcp"]
+cwd = "."
+startup_timeout_sec = 120

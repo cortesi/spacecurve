@@ -2,6 +2,7 @@ use std::sync::OnceLock;
 
 use egui::epaint::Shadow;
 use egui_commonmark::CommonMarkViewer;
+use eguidev::{DevUiExt, WidgetMeta, WidgetRole};
 
 use crate::{APP_NAME, theme};
 
@@ -23,6 +24,16 @@ pub fn show_about_dialog(
 
     let mut should_close = false;
     let response = show_about_area(ctx, cache, dialog_size, center_pos, &mut should_close);
+    eguidev::track_response_full(
+        "dialog.about",
+        &response.response,
+        WidgetMeta {
+            role: WidgetRole::Window,
+            label: Some("About".to_string()),
+            visible: true,
+            ..Default::default()
+        },
+    );
 
     if !was_just_opened
         && ctx.input(|i| i.pointer.primary_clicked())
@@ -92,17 +103,14 @@ fn show_about_area(
                 .show(ui, |ui| {
                     ui.set_width(dialog_size.x);
                     ui.set_height(dialog_size.y);
-                    ui.vertical(|ui| {
+                    eguidev::container(ui, "dialog.about.body", |ui| {
                         ui.horizontal(|ui| {
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
                                 if ui
-                                    .add(
-                                        egui::Button::new(
-                                            egui::RichText::new("×")
-                                                .size(theme::font_size::CLOSE_BUTTON),
-                                        )
-                                        .fill(egui::Color32::TRANSPARENT)
-                                        .frame(false),
+                                    .dev_button(
+                                        "dialog.about.close",
+                                        egui::RichText::new("×")
+                                            .size(theme::font_size::CLOSE_BUTTON),
                                     )
                                     .clicked()
                                 {
@@ -121,18 +129,20 @@ fn show_about_area(
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.vertical(|ui| {
-                                        ui.add(egui::Label::new(
+                                        ui.dev_label(
+                                            "dialog.about.heading",
                                             egui::RichText::new(APP_NAME)
                                                 .size(theme::font_size::HEADING_LARGE)
                                                 .color(theme::TEXT_HEADING)
                                                 .strong(),
-                                        ));
+                                        );
                                         ui.add_space(2.0);
-                                        ui.add(egui::Label::new(
+                                        ui.dev_label(
+                                            "dialog.about.subtitle",
                                             egui::RichText::new("Space-filling curve playground")
                                                 .size(theme::font_size::LABEL)
                                                 .color(theme::TEXT_SECONDARY),
-                                        ));
+                                        );
                                         ui.add_space(2.0);
                                         ui.horizontal(|ui| {
                                             ui.label(
@@ -152,14 +162,15 @@ fn show_about_area(
                                     ui.with_layout(
                                         egui::Layout::right_to_left(egui::Align::TOP),
                                         |ui| {
-                                            ui.add(egui::Label::new(
+                                            ui.dev_label(
+                                                "dialog.about.version",
                                                 egui::RichText::new(format!(
                                                     "v{}",
                                                     env!("CARGO_PKG_VERSION")
                                                 ))
                                                 .size(theme::font_size::VERSION)
                                                 .color(theme::TEXT_DIM),
-                                            ));
+                                            );
                                         },
                                     );
                                 });

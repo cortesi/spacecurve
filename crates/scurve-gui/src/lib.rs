@@ -1,8 +1,13 @@
 //! GUI application for exploring space‑filling curves using egui/eframe.
 
-use std::{fs::File, io::BufWriter, path::PathBuf, sync::Arc};
+use std::{
+    fs::File, io::BufWriter, path::PathBuf, result::Result as StdResult, sync::Arc, time::Duration,
+};
 
 use anyhow::Result;
+use eguidev::{DevMcp, DevUiExt, FixtureSpec, FrameGuard};
+#[cfg(all(not(target_arch = "wasm32"), feature = "devtools"))]
+use eguidev_runtime::attach as attach_runtime;
 use spacecurve::registry;
 
 /// Canonical application name used across the GUI.
@@ -63,6 +68,8 @@ pub struct GuiOptions {
     pub screenshot: Option<ScreenshotConfig>,
     /// Enable developer overlay (frame timing, etc.).
     pub show_dev_overlay: bool,
+    /// Enable the embedded DevMCP runtime when supported.
+    pub enable_mcp: bool,
 }
 
 /// About dialog contents and helpers.
@@ -224,6 +231,8 @@ impl Default for RenderCache {
 
 /// Root eframe application.
 pub struct ScurveApp {
+    /// DevMCP integration handle.
+    devmcp: DevMcp,
     /// 2D selection and cache state.
     selected_curve: SelectedCurve,
     /// 3D selection and cache state.
@@ -244,6 +253,49 @@ pub struct ScurveApp {
     commonmark_cache: egui_commonmark::CommonMarkCache,
     /// Whether to show developer diagnostics overlay.
     show_dev_overlay: bool,
+}
+
+/// Result type used when applying named DevMCP fixtures.
+type FixtureResult = StdResult<(), String>;
+
+/// Fixtures that reset the GUI into known automation baselines.
+fn gui_fixtures() -> Vec<FixtureSpec> {
+    vec![
+        FixtureSpec {
+            name: "spacecurve.default".to_string(),
+            description: "Stable 2D baseline with overlays closed and animation disabled."
+                .to_string(),
+        },
+        FixtureSpec {
+            name: "spacecurve.about".to_string(),
+            description: "Stable 2D baseline with the About dialog open.".to_string(),
+        },
+        FixtureSpec {
+            name: "spacecurve.settings.2d".to_string(),
+            description: "Stable 2D baseline with the settings panel open.".to_string(),
+        },
+        FixtureSpec {
+            name: "spacecurve.3d".to_string(),
+            description: "Stable 3D baseline with overlays closed and animation disabled."
+                .to_string(),
+        },
+        FixtureSpec {
+            name: "spacecurve.settings.3d".to_string(),
+            description: "Stable 3D baseline with the settings panel open.".to_string(),
+        },
+    ]
+}
+
+/// Build the DevMCP handle, optionally attaching the native automation runtime.
+fn build_devmcp(enable_mcp: bool) -> DevMcp {
+    let devmcp = DevMcp::new().fixtures(gui_fixtures());
+    #[cfg(all(not(target_arch = "wasm32"), feature = "devtools"))]
+    if enable_mcp {
+        return attach_runtime(devmcp);
+    }
+
+    let _ = enable_mcp;
+    devmcp
 }
 
 impl ScurveApp {
@@ -318,6 +370,7 @@ impl ScurveApp {
         }
 
         Self {
+            devmcp: build_devmcp(options.enable_mcp),
             selected_curve: SelectedCurve::with_name(default_curve),
             selected_3d_curve: Selected3DCurve::with_name(default_curve),
             available_curves,
@@ -331,64 +384,108 @@ impl ScurveApp {
         }
     }
 
+    /// Return the default visible curve for the current run.
+    fn default_curve_name(&self) -> &'static str {
+        self.available_curves
+            .first()
+            .copied()
+            .unwrap_or(registry::CURVE_NAMES[0])
+    }
+
+    /// Reset automation-facing state to a deterministic baseline.
+    fn reset_for_fixture(&mut self) {
+        let default_curve = self.default_curve_name();
+        self.selected_curve = SelectedCurve::with_name(default_curve);
+        self.selected_3d_curve = Selected3DCurve::with_name(default_curve);
+        self.app_state = AppState::default();
+        self.app_state.paused = true;
+        self.render_cache = RenderCache::default();
+        self.shared_settings = SharedSettings {
+            snake_enabled: false,
+            ..SharedSettings::default()
+        };
+        self.last_time = None;
+        self.commonmark_cache = Default::default();
+    }
+
+    /// Apply a named DevMCP fixture to the live app state.
+    fn apply_fixture(&mut self, name: &str) -> FixtureResult {
+        self.reset_for_fixture();
+
+        match name {
+            "spacecurve.default" => Ok(()),
+            "spacecurve.about" => {
+                self.app_state.about_open = true;
+                Ok(())
+            }
+            "spacecurve.settings.2d" => {
+                self.app_state.settings_dropdown_open = true;
+                Ok(())
+            }
+            "spacecurve.3d" => {
+                self.app_state.current_pane = Pane::ThreeD;
+                Ok(())
+            }
+            "spacecurve.settings.3d" => {
+                self.app_state.current_pane = Pane::ThreeD;
+                self.app_state.settings_dropdown_open = true;
+                Ok(())
+            }
+            _ => Err(format!("unknown fixture: {name}")),
+        }
+    }
+
     /// Render the top menu bar with title, tabs, and About button.
     fn show_menu_bar(&mut self, ui: &mut egui::Ui) {
-        egui::Panel::top("menu_bar")
-            .frame(egui::Frame::new().inner_margin(egui::Margin {
-                left: theme::menu_bar::PADDING_HORIZONTAL as i8,
-                right: theme::menu_bar::PADDING_HORIZONTAL as i8,
-                top: theme::menu_bar::PADDING_VERTICAL as i8,
-                bottom: theme::menu_bar::PADDING_VERTICAL as i8,
-            }))
-            .show_inside(ui, |ui| {
-                ui.horizontal(|ui| {
-                    // Title on the far left that links to GitHub
-                    if ui
-                        .link(
+        eguidev::container(ui, "app.menu_bar", |ui| {
+            egui::Panel::top("menu_bar")
+                .frame(egui::Frame::new().inner_margin(egui::Margin {
+                    left: theme::menu_bar::PADDING_HORIZONTAL as i8,
+                    right: theme::menu_bar::PADDING_HORIZONTAL as i8,
+                    top: theme::menu_bar::PADDING_VERTICAL as i8,
+                    bottom: theme::menu_bar::PADDING_VERTICAL as i8,
+                }))
+                .show_inside(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        let title_response = ui.dev_link(
+                            "app.title",
                             egui::RichText::new(APP_NAME)
                                 .size(theme::font_size::TITLE)
                                 .strong()
                                 .color(theme::TEXT_HEADING),
-                        )
-                        .clicked()
-                        && let Err(e) = webbrowser::open(APP_REPO_URL)
-                    {
-                        eprintln!("Failed to open browser: {e}");
-                    }
-
-                    ui.add_space(theme::menu_bar::TITLE_SPACING);
-
-                    // Tab buttons with more visual weight
-                    let tab_text_size = 15.0;
-                    if ui
-                        .selectable_label(
-                            self.app_state.current_pane == Pane::TwoD,
-                            egui::RichText::new("2D").size(tab_text_size),
-                        )
-                        .clicked()
-                    {
-                        self.app_state.current_pane = Pane::TwoD;
-                    }
-                    ui.add_space(theme::menu_bar::TAB_SPACING);
-                    if ui
-                        .selectable_label(
-                            self.app_state.current_pane == Pane::ThreeD,
-                            egui::RichText::new("3D").size(tab_text_size),
-                        )
-                        .clicked()
-                    {
-                        self.app_state.current_pane = Pane::ThreeD;
-                    }
-
-                    // Right-aligned About button with padding
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.add_space(theme::menu_bar::BUTTON_PADDING);
-                        if ui.button("About").clicked() {
-                            self.app_state.about_open = !self.app_state.about_open;
+                        );
+                        if title_response.clicked()
+                            && let Err(error) = webbrowser::open(APP_REPO_URL)
+                        {
+                            eprintln!("Failed to open browser: {error}");
                         }
+
+                        ui.add_space(theme::menu_bar::TITLE_SPACING);
+
+                        let tab_text_size = 15.0;
+                        ui.dev_selectable_value(
+                            "app.tab.2d",
+                            &mut self.app_state.current_pane,
+                            Pane::TwoD,
+                            egui::RichText::new("2D").size(tab_text_size),
+                        );
+                        ui.add_space(theme::menu_bar::TAB_SPACING);
+                        ui.dev_selectable_value(
+                            "app.tab.3d",
+                            &mut self.app_state.current_pane,
+                            Pane::ThreeD,
+                            egui::RichText::new("3D").size(tab_text_size),
+                        );
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.add_space(theme::menu_bar::BUTTON_PADDING);
+                            if ui.dev_button("app.about.toggle", "About").clicked() {
+                                self.app_state.about_open = !self.app_state.about_open;
+                            }
+                        });
                     });
                 });
-            });
+        });
     }
 
     /// Handle multi-frame screenshot capture and saving to disk.
@@ -548,9 +645,13 @@ impl eframe::App for ScurveApp {
         // Only request a repaint when there is time-based animation to show
         let needs_repaint = self.shared_settings.snake_enabled
             || (self.app_state.current_pane == Pane::ThreeD
-                && (!self.app_state.paused || self.app_state.mouse_dragging));
+                && (!self.app_state.paused || self.app_state.mouse_dragging))
+            || self.devmcp.is_enabled();
         if needs_repaint {
             ctx.request_repaint();
+        }
+        if self.devmcp.is_enabled() {
+            ctx.request_repaint_after(Duration::from_millis(16));
         }
 
         // Synchronize selection between panes based on the active pane
@@ -564,7 +665,25 @@ impl eframe::App for ScurveApp {
         self.handle_screenshot(ctx);
     }
 
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let mut fixture_applied = false;
+        for request in self.devmcp.collect_fixture_requests() {
+            let result = self.apply_fixture(&request.name);
+            if !request.respond(result) {
+                eprintln!("spacecurve: fixture response channel closed");
+            }
+            fixture_applied = true;
+        }
+
+        if fixture_applied {
+            ctx.request_repaint();
+        }
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = ui.ctx().clone();
+        let devmcp = self.devmcp.clone();
+        let _guard = FrameGuard::new(&devmcp, &ctx);
         self.show_menu_bar(ui);
 
         // Show About dialog if open
@@ -581,6 +700,10 @@ impl eframe::App for ScurveApp {
         if self.show_dev_overlay {
             self.show_frame_time_overlay(ui.ctx());
         }
+    }
+
+    fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+        eguidev::raw_input_hook(&self.devmcp, ctx, raw_input);
     }
 }
 
@@ -629,7 +752,10 @@ pub fn gui_with_screenshot(screenshot_config: Option<ScreenshotConfig>) -> Resul
 /// Launch the native GUI with custom options, including dev/experimental curves.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn gui_with_options(options: GuiOptions) -> Result<()> {
+    validate_gui_options(&options)?;
+
     let native_options = eframe::NativeOptions {
+        renderer: eframe::Renderer::Glow,
         viewport: egui::ViewportBuilder::default()
             .with_inner_size(theme::window::DEFAULT_SIZE)
             .with_title(format!("{APP_NAME} gui")),
@@ -645,6 +771,22 @@ pub fn gui_with_options(options: GuiOptions) -> Result<()> {
     )
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
+    Ok(())
+}
+
+/// Reject launch options that require features missing from the current build.
+#[cfg(not(target_arch = "wasm32"))]
+fn validate_gui_options(options: &GuiOptions) -> Result<()> {
+    #[cfg(not(feature = "devtools"))]
+    if options.enable_mcp {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "--dev-mcp requires building scurve with --features devtools",
+        )
+        .into());
+    }
+
+    let _ = options;
     Ok(())
 }
 

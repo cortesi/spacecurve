@@ -2,6 +2,7 @@ use egui::{
     self,
     epaint::{PathShape, Stroke},
 };
+use eguidev::{WidgetMeta, WidgetRole};
 
 use super::widgets;
 use crate::{
@@ -20,59 +21,69 @@ pub fn show_2d_pane(
     available_curves: &[&str],
     shared_settings: &mut crate::SharedSettings,
 ) {
-    // Secondary control bar with lighter visual weight
-    egui::Frame::new()
-        .inner_margin(egui::Margin {
-            left: theme::control_bar::PADDING_HORIZONTAL as i8,
-            right: theme::control_bar::PADDING_HORIZONTAL as i8,
-            top: theme::control_bar::PADDING_VERTICAL as i8,
-            bottom: theme::control_bar::PADDING_VERTICAL as i8,
-        })
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                // Use smaller, dimmer text for control labels
-                ui.label(
-                    egui::RichText::new("Curve:")
-                        .size(theme::font_size::INFO)
-                        .color(theme::TEXT_DIM),
-                );
-                widgets::curve_selector_combo(
-                    ui,
-                    &mut selected_curve.name,
-                    available_curves,
-                    "curve_selector",
-                    &mut selected_curve.info_open,
-                    2,
-                    selected_curve.size,
-                );
+    eguidev::container(ui, "pane.2d", |ui| {
+        egui::Frame::new()
+            .inner_margin(egui::Margin {
+                left: theme::control_bar::PADDING_HORIZONTAL as i8,
+                right: theme::control_bar::PADDING_HORIZONTAL as i8,
+                top: theme::control_bar::PADDING_VERTICAL as i8,
+                bottom: theme::control_bar::PADDING_VERTICAL as i8,
+            })
+            .show(ui, |ui| {
+                eguidev::container(ui, "pane.2d.toolbar", |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            egui::RichText::new("Curve:")
+                                .size(theme::font_size::INFO)
+                                .color(theme::TEXT_DIM),
+                        );
+                        widgets::curve_selector_combo(
+                            ui,
+                            &mut selected_curve.name,
+                            available_curves,
+                            widgets::CurveSelectorConfig {
+                                widget_id: "pane.2d.curve",
+                                id_salt: "curve_selector",
+                                info_open: &mut selected_curve.info_open,
+                                dim: 2,
+                                size: selected_curve.size,
+                            },
+                        );
 
-                ui.separator();
+                        ui.separator();
 
-                ui.label(
-                    egui::RichText::new("Size:")
-                        .size(theme::font_size::INFO)
-                        .color(theme::TEXT_DIM),
-                );
-                widgets::size_selector_2d(ui, &mut selected_curve.size, "size_selector");
+                        ui.label(
+                            egui::RichText::new("Size:")
+                                .size(theme::font_size::INFO)
+                                .color(theme::TEXT_DIM),
+                        );
+                        widgets::size_selector_2d(
+                            ui,
+                            &mut selected_curve.size,
+                            "size_selector",
+                            "pane.2d.size",
+                        );
 
-                // Push pause and settings buttons to the far right
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    widgets::settings_dropdown(
-                        ui,
-                        &mut app_state.settings_dropdown_open,
-                        &mut app_state.settings_dropdown_pos,
-                        shared_settings,
-                        false,
-                    );
-                    ui.add_space(theme::spacing::SMALL);
-                    widgets::pause_play_button(ui, &mut app_state.paused);
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            widgets::settings_dropdown(
+                                ui,
+                                &mut app_state.settings_dropdown_open,
+                                &mut app_state.settings_dropdown_pos,
+                                shared_settings,
+                                false,
+                                "pane.2d.settings.toggle",
+                            );
+                            ui.add_space(theme::spacing::SMALL);
+                            widgets::pause_play_button(ui, &mut app_state.paused, "pane.2d.pause");
+                        });
+                    });
                 });
             });
-        });
 
-    ui.separator();
+        ui.separator();
 
-    draw_2d_canvas(ui, render_cache, selected_curve, shared_settings);
+        draw_2d_canvas(ui, render_cache, selected_curve, shared_settings);
+    });
 }
 
 /// Render the 2D drawing canvas and overlays.
@@ -237,7 +248,17 @@ fn draw_2d_canvas(
         }
     }
 
-    ui.allocate_rect(drawing_rect, egui::Sense::hover());
+    let response = ui.allocate_rect(drawing_rect, egui::Sense::hover());
+    eguidev::track_response_full(
+        "pane.2d.canvas",
+        &response,
+        WidgetMeta {
+            role: WidgetRole::Unknown,
+            label: Some("2D canvas".to_string()),
+            visible: true,
+            ..Default::default()
+        },
+    );
 }
 
 /// Convert integer curve points to screen positions within the drawing rect.

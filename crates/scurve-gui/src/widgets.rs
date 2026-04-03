@@ -2,9 +2,55 @@ use egui::{
     self, Response, Slider,
     epaint::{Shadow, Stroke},
 };
+use eguidev::{
+    RoleState, WidgetMeta, WidgetRange, WidgetRole, WidgetValue, take_widget_value_override,
+};
 use spacecurve::curve_from_name;
 
 use crate::theme;
+
+/// Record widget metadata for a custom-drawn control.
+fn track_widget(ui: &egui::Ui, id: impl Into<String>, response: &Response, mut meta: WidgetMeta) {
+    meta.visible = ui.is_visible() && ui.is_rect_visible(response.rect);
+    eguidev::track_response_full(id, response, meta);
+}
+
+/// Apply a queued combo-box override and return the selected option index.
+fn combo_override_index(ui: &egui::Ui, widget_id: &str, option_count: usize) -> Option<usize> {
+    let updated = match take_widget_value_override(ui, widget_id) {
+        Some(WidgetValue::Int(updated)) => usize::try_from(updated).ok(),
+        Some(WidgetValue::Float(updated)) => Some(updated as usize),
+        _ => None,
+    }?;
+    (updated < option_count).then_some(updated)
+}
+
+/// Apply a queued boolean override to a custom widget-backed value.
+fn apply_bool_override(ui: &egui::Ui, widget_id: &str, value: &mut bool) -> bool {
+    let updated = match take_widget_value_override(ui, widget_id) {
+        Some(WidgetValue::Bool(updated)) => Some(updated),
+        _ => None,
+    };
+    if let Some(updated) = updated {
+        *value = updated;
+        return true;
+    }
+    false
+}
+
+/// Apply a queued numeric override to a custom widget-backed value.
+fn apply_f32_override(ui: &egui::Ui, widget_id: &str, value: &mut f32) -> bool {
+    let updated = match take_widget_value_override(ui, widget_id) {
+        Some(WidgetValue::Float(updated)) => Some(updated as f32),
+        Some(WidgetValue::Int(updated)) => Some(updated as f32),
+        _ => None,
+    };
+    if let Some(updated) = updated {
+        *value = updated;
+        return true;
+    }
+    false
+}
 
 /// Add a slider with themed rail and fill colors for better visibility.
 pub fn themed_slider(ui: &mut egui::Ui, slider: Slider<'_>) -> Response {
@@ -111,26 +157,18 @@ fn slider_row_with_value(
     .inner
 }
 
-/// Common curve selector widget with label included.
-pub fn curve_selector(
-    ui: &mut egui::Ui,
-    curve_name: &mut String,
-    available_curves: &[&str],
-    id_salt: &str,
-    info_open: &mut bool,
-    dim: u32,
-    size: u32,
-) {
-    ui.label("Curve:");
-    curve_selector_combo(
-        ui,
-        curve_name,
-        available_curves,
-        id_salt,
-        info_open,
-        dim,
-        size,
-    );
+/// Configuration for the reusable curve-selector helpers.
+pub struct CurveSelectorConfig<'a> {
+    /// Stable DevMCP id for the combo box.
+    pub widget_id: &'a str,
+    /// Unique egui id salt for popup state.
+    pub id_salt: &'a str,
+    /// Whether the info popup is currently open.
+    pub info_open: &'a mut bool,
+    /// Dimensionality of the selected curve.
+    pub dim: u32,
+    /// Current curve size used for info rendering.
+    pub size: u32,
 }
 
 /// Curve selector combo box only (without label).
@@ -139,11 +177,20 @@ pub fn curve_selector_combo(
     ui: &mut egui::Ui,
     curve_name: &mut String,
     available_curves: &[&str],
-    id_salt: &str,
-    info_open: &mut bool,
-    dim: u32,
-    size: u32,
+    config: CurveSelectorConfig<'_>,
 ) {
+    let CurveSelectorConfig {
+        widget_id,
+        id_salt,
+        info_open,
+        dim,
+        size,
+    } = config;
+
+    if let Some(updated) = combo_override_index(ui, widget_id, available_curves.len()) {
+        *curve_name = available_curves[updated].to_string();
+    }
+
     // Track if any curve was selected
     let mut curve_was_selected = false;
 
@@ -160,6 +207,25 @@ pub fn curve_selector_combo(
             }
         });
 
+    let selected_index = available_curves
+        .iter()
+        .position(|name| *name == curve_name.as_str())
+        .unwrap_or(0);
+    track_widget(
+        ui,
+        widget_id,
+        &combo_response.response,
+        WidgetMeta {
+            role: WidgetRole::ComboBox,
+            label: Some("Curve".to_string()),
+            value: Some(WidgetValue::Int(selected_index as i64)),
+            role_state: Some(RoleState::ComboBox {
+                options: available_curves.iter().map(ToString::to_string).collect(),
+            }),
+            ..Default::default()
+        },
+    );
+
     // Info button with better styling
     let info_button = ui.add(
         egui::Button::new("ℹ")
@@ -170,6 +236,19 @@ pub fn curve_selector_combo(
                 egui::Color32::TRANSPARENT
             }),
     );
+    track_widget(
+        ui,
+        format!("{widget_id}.info_toggle"),
+        &info_button,
+        WidgetMeta {
+            role: WidgetRole::Button,
+            label: Some("Curve info".to_string()),
+            role_state: Some(RoleState::Button {
+                selected: *info_open,
+            }),
+            ..Default::default()
+        },
+    );
     if info_button.clicked() {
         *info_open = !*info_open;
     }
@@ -179,6 +258,7 @@ pub fn curve_selector_combo(
             ui.ctx(),
             InfoPaneArgs {
                 id_salt,
+                widget_id,
                 info_open,
                 curve_name,
                 dim,
@@ -195,6 +275,8 @@ pub fn curve_selector_combo(
 struct InfoPaneArgs<'a> {
     /// Unique salt used for UI ids tied to this selector.
     id_salt: &'a str,
+    /// Base widget id used for DevMCP instrumentation.
+    widget_id: &'a str,
     /// Mutable flag controlling whether the pane is open.
     info_open: &'a mut bool,
     /// Currently selected curve name.
@@ -215,6 +297,7 @@ struct InfoPaneArgs<'a> {
 fn draw_curve_info_pane(ctx: &egui::Context, args: InfoPaneArgs<'_>) {
     let InfoPaneArgs {
         id_salt,
+        widget_id,
         info_open,
         curve_name,
         dim,
@@ -250,6 +333,16 @@ fn draw_curve_info_pane(ctx: &egui::Context, args: InfoPaneArgs<'_>) {
                     render_info_popup_contents(ui, curve_name, dim, size, info_open);
                 });
         });
+    eguidev::track_response_full(
+        format!("{widget_id}.info_pane"),
+        &area.response,
+        WidgetMeta {
+            role: WidgetRole::Window,
+            label: Some("Curve info".to_string()),
+            visible: true,
+            ..Default::default()
+        },
+    );
 
     if !curve_was_selected {
         let pointer_pos = ctx.input(|i| i.pointer.interact_pos());
@@ -341,52 +434,120 @@ fn render_info_popup_contents(
 }
 
 /// Common size selector widget for 2D curves
-pub fn size_selector_2d(ui: &mut egui::Ui, size: &mut u32, id_salt: &str) {
-    egui::ComboBox::from_id_salt(id_salt)
+pub fn size_selector_2d(ui: &mut egui::Ui, size: &mut u32, id_salt: &str, widget_id: &str) {
+    const OPTIONS: [u32; 6] = [4, 8, 16, 32, 64, 128];
+
+    if let Some(updated) = combo_override_index(ui, widget_id, OPTIONS.len()) {
+        *size = OPTIONS[updated];
+    }
+
+    let response = egui::ComboBox::from_id_salt(id_salt)
         .selected_text(format!("{size}×{size}"))
         .show_ui(ui, |ui| {
-            for &s in &[4, 8, 16, 32, 64, 128] {
+            for &s in &OPTIONS {
                 ui.selectable_value(size, s, format!("{s}×{s}"));
             }
         });
+
+    let selected_index = OPTIONS
+        .iter()
+        .position(|option| option == size)
+        .unwrap_or(0);
+    track_widget(
+        ui,
+        widget_id,
+        &response.response,
+        WidgetMeta {
+            role: WidgetRole::ComboBox,
+            label: Some("Size".to_string()),
+            value: Some(WidgetValue::Int(selected_index as i64)),
+            role_state: Some(RoleState::ComboBox {
+                options: OPTIONS
+                    .iter()
+                    .map(|option| format!("{option}×{option}"))
+                    .collect(),
+            }),
+            ..Default::default()
+        },
+    );
 }
 
 /// Common size selector widget for 3D curves
-pub fn size_selector_3d(ui: &mut egui::Ui, size: &mut u32, id_salt: &str) {
-    egui::ComboBox::from_id_salt(id_salt)
+pub fn size_selector_3d(ui: &mut egui::Ui, size: &mut u32, id_salt: &str, widget_id: &str) {
+    const OPTIONS: [u32; 4] = [4, 8, 16, 32];
+
+    if let Some(updated) = combo_override_index(ui, widget_id, OPTIONS.len()) {
+        *size = OPTIONS[updated];
+    }
+
+    let response = egui::ComboBox::from_id_salt(id_salt)
         .selected_text(format!("{size}×{size}×{size}"))
         .show_ui(ui, |ui| {
-            for &s in &[4, 8, 16, 32] {
+            for &s in &OPTIONS {
                 // Smaller max size for 3D due to cubic growth
                 ui.selectable_value(size, s, format!("{s}×{s}×{s}"));
             }
         });
+
+    let selected_index = OPTIONS
+        .iter()
+        .position(|option| option == size)
+        .unwrap_or(0);
+    track_widget(
+        ui,
+        widget_id,
+        &response.response,
+        WidgetMeta {
+            role: WidgetRole::ComboBox,
+            label: Some("Size".to_string()),
+            value: Some(WidgetValue::Int(selected_index as i64)),
+            role_state: Some(RoleState::ComboBox {
+                options: OPTIONS
+                    .iter()
+                    .map(|option| format!("{option}×{option}×{option}"))
+                    .collect(),
+            }),
+            ..Default::default()
+        },
+    );
 }
 
 /// Common pause/play button widget
-pub fn pause_play_button(ui: &mut egui::Ui, paused: &mut bool) -> bool {
+pub fn pause_play_button(ui: &mut egui::Ui, paused: &mut bool, widget_id: &str) -> bool {
     let (fill, border, glyph) = if *paused {
         (theme::BUTTON_PLAY, theme::TEXT_LINK, "▶")
     } else {
         (theme::BUTTON_PAUSE, theme::TEXT_HEADING, "⏸")
     };
 
-    let clicked = ui
-        .add(
-            egui::Button::new(
-                egui::RichText::new(glyph)
-                    .color(theme::TEXT_PRIMARY)
-                    .size(theme::font_size::TITLE),
-            )
-            .min_size(egui::vec2(34.0, 28.0))
-            .fill(fill)
-            .stroke(Stroke::new(1.5, border)),
+    let response = ui.add(
+        egui::Button::new(
+            egui::RichText::new(glyph)
+                .color(theme::TEXT_PRIMARY)
+                .size(theme::font_size::TITLE),
         )
-        .clicked();
+        .min_size(egui::vec2(34.0, 28.0))
+        .fill(fill)
+        .stroke(Stroke::new(1.5, border)),
+    );
+
+    let clicked = response.clicked();
 
     if clicked {
         *paused = !*paused;
     }
+
+    track_widget(
+        ui,
+        widget_id,
+        &response,
+        WidgetMeta {
+            role: WidgetRole::Button,
+            label: Some("Pause / play".to_string()),
+            role_state: Some(RoleState::Button { selected: *paused }),
+            ..Default::default()
+        },
+    );
 
     clicked
 }
@@ -409,6 +570,7 @@ fn settings_panel_content(
     } else {
         ((shared.curve_opacity.ln() - LOG_MIN) / (0.0 - LOG_MIN)) * 100.0
     };
+    let curve_opacity_overridden = apply_f32_override(ui, "settings.curve_opacity", &mut log_value);
 
     let response = slider_row(
         ui,
@@ -425,8 +587,25 @@ fn settings_panel_content(
                 }
             }),
     );
+    track_widget(
+        ui,
+        "settings.curve_opacity",
+        &response,
+        WidgetMeta {
+            role: WidgetRole::Slider,
+            label: Some("Opacity".to_string()),
+            value: Some(WidgetValue::Float(f64::from(log_value))),
+            role_state: Some(RoleState::Slider {
+                range: WidgetRange {
+                    min: 0.0,
+                    max: 100.0,
+                },
+            }),
+            ..Default::default()
+        },
+    );
 
-    if response.changed() {
+    if response.changed() || curve_opacity_overridden {
         shared.curve_opacity = if log_value <= 0.0 {
             0.0
         } else {
@@ -438,41 +617,148 @@ fn settings_panel_content(
     ui.add(egui::Separator::default().spacing(theme::spacing::SMALL));
 
     section_header(ui, "Long Jumps");
-    neon_checkbox(ui, &mut shared.curve_long_jumps, "Show on curve");
-    neon_checkbox(ui, &mut shared.snake_long_jumps, "Show on snake");
+    _ = apply_bool_override(
+        ui,
+        "settings.curve_long_jumps",
+        &mut shared.curve_long_jumps,
+    );
+    let curve_long_jumps = neon_checkbox(ui, &mut shared.curve_long_jumps, "Show on curve");
+    track_widget(
+        ui,
+        "settings.curve_long_jumps",
+        &curve_long_jumps,
+        WidgetMeta {
+            role: WidgetRole::Checkbox,
+            label: Some("Show on curve".to_string()),
+            value: Some(WidgetValue::Bool(shared.curve_long_jumps)),
+            role_state: Some(RoleState::Checkbox {
+                indeterminate: false,
+            }),
+            ..Default::default()
+        },
+    );
+    _ = apply_bool_override(
+        ui,
+        "settings.snake_long_jumps",
+        &mut shared.snake_long_jumps,
+    );
+    let snake_long_jumps = neon_checkbox(ui, &mut shared.snake_long_jumps, "Show on snake");
+    track_widget(
+        ui,
+        "settings.snake_long_jumps",
+        &snake_long_jumps,
+        WidgetMeta {
+            role: WidgetRole::Checkbox,
+            label: Some("Show on snake".to_string()),
+            value: Some(WidgetValue::Bool(shared.snake_long_jumps)),
+            role_state: Some(RoleState::Checkbox {
+                indeterminate: false,
+            }),
+            ..Default::default()
+        },
+    );
 
     ui.add_space(theme::spacing::MEDIUM - 2.0);
     ui.add(egui::Separator::default().spacing(theme::spacing::SMALL));
 
     section_header(ui, "Snake");
 
-    neon_checkbox(ui, &mut shared.snake_enabled, "Enable snake overlay");
+    _ = apply_bool_override(ui, "settings.snake_enabled", &mut shared.snake_enabled);
+    let snake_enabled = neon_checkbox(ui, &mut shared.snake_enabled, "Enable snake overlay");
+    track_widget(
+        ui,
+        "settings.snake_enabled",
+        &snake_enabled,
+        WidgetMeta {
+            role: WidgetRole::Checkbox,
+            label: Some("Enable snake overlay".to_string()),
+            value: Some(WidgetValue::Bool(shared.snake_enabled)),
+            role_state: Some(RoleState::Checkbox {
+                indeterminate: false,
+            }),
+            ..Default::default()
+        },
+    );
 
+    _ = apply_f32_override(ui, "settings.snake_length", &mut shared.snake_length);
     let snake_length_value = shared.snake_length;
-    slider_row_with_value(
+    let snake_length = slider_row_with_value(
         ui,
         "Length",
         egui::Slider::new(&mut shared.snake_length, 0.0..=50.0).step_by(0.5),
         format!("{:>6.1}%", snake_length_value),
     );
+    track_widget(
+        ui,
+        "settings.snake_length",
+        &snake_length,
+        WidgetMeta {
+            role: WidgetRole::Slider,
+            label: Some("Length".to_string()),
+            value: Some(WidgetValue::Float(f64::from(shared.snake_length))),
+            role_state: Some(RoleState::Slider {
+                range: WidgetRange {
+                    min: 0.0,
+                    max: 50.0,
+                },
+            }),
+            ..Default::default()
+        },
+    );
+    _ = apply_f32_override(ui, "settings.snake_speed", &mut shared.snake_speed);
     let snake_value = shared.snake_speed;
-    slider_row_with_value(
+    let snake_speed = slider_row_with_value(
         ui,
         "Speed",
         egui::Slider::new(&mut shared.snake_speed, 1.0..=200.0).step_by(1.0),
         format!("{:>6.0} seg/s", snake_value.round()),
+    );
+    track_widget(
+        ui,
+        "settings.snake_speed",
+        &snake_speed,
+        WidgetMeta {
+            role: WidgetRole::Slider,
+            label: Some("Speed".to_string()),
+            value: Some(WidgetValue::Float(f64::from(shared.snake_speed))),
+            role_state: Some(RoleState::Slider {
+                range: WidgetRange {
+                    min: 1.0,
+                    max: 200.0,
+                },
+            }),
+            ..Default::default()
+        },
     );
 
     if show_spin_speed {
         ui.add_space(theme::spacing::MEDIUM - 2.0);
         ui.add(egui::Separator::default().spacing(theme::spacing::SMALL));
         section_header(ui, "3D rotation");
+        _ = apply_f32_override(ui, "settings.spin_speed", &mut shared.spin_speed);
         let spin_value = shared.spin_speed;
-        slider_row_with_value(
+        let spin_speed = slider_row_with_value(
             ui,
             "Speed",
             egui::Slider::new(&mut shared.spin_speed, 0.0..=100.0).step_by(1.0),
             format!("{:>5.0}%", spin_value.round()),
+        );
+        track_widget(
+            ui,
+            "settings.spin_speed",
+            &spin_speed,
+            WidgetMeta {
+                role: WidgetRole::Slider,
+                label: Some("Speed".to_string()),
+                value: Some(WidgetValue::Float(f64::from(shared.spin_speed))),
+                role_state: Some(RoleState::Slider {
+                    range: WidgetRange {
+                        min: 0.0,
+                        max: 100.0,
+                    },
+                }),
+                ..Default::default()
+            },
         );
     }
 }
@@ -486,8 +772,22 @@ pub fn settings_dropdown(
     settings_pos: &mut Option<egui::Pos2>,
     shared: &mut crate::SharedSettings,
     show_spin_speed: bool,
+    button_id: &str,
 ) {
     let button_response = ui.button("⚙");
+    track_widget(
+        ui,
+        button_id,
+        &button_response,
+        WidgetMeta {
+            role: WidgetRole::Button,
+            label: Some("Settings".to_string()),
+            role_state: Some(RoleState::Button {
+                selected: *settings_open,
+            }),
+            ..Default::default()
+        },
+    );
     if button_response.clicked() {
         *settings_open = !*settings_open;
         if *settings_open {
@@ -536,7 +836,9 @@ pub fn settings_dropdown(
                     ui.set_width(theme::popup::SETTINGS_WIDTH);
                     ui.set_min_width(theme::popup::SETTINGS_WIDTH);
                     ui.spacing_mut().slider_width = theme::popup::SETTINGS_WIDTH - 90.0;
-                    ui.vertical(|ui| settings_panel_content(ui, shared, show_spin_speed));
+                    eguidev::container(ui, "settings.panel", |ui| {
+                        ui.vertical(|ui| settings_panel_content(ui, shared, show_spin_speed));
+                    });
                 });
         });
 
