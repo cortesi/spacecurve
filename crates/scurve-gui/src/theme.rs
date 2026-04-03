@@ -434,7 +434,10 @@ pub fn normalize_depth(depth: f32) -> f32 {
 
 /// Configure egui visuals with the terminal theme.
 pub fn configure_visuals(ctx: &egui::Context) {
-    use egui::{FontFamily, FontId, TextStyle, Visuals, epaint::Shadow};
+    use egui::{FontFamily, FontId, TextStyle, Theme, Visuals, epaint::Shadow};
+
+    // Force a consistent presentation regardless of host OS/browser theme.
+    ctx.set_theme(Theme::Dark);
 
     let mut visuals = Visuals::dark();
 
@@ -532,10 +535,11 @@ pub fn configure_visuals(ctx: &egui::Context) {
     );
 
     ctx.set_fonts(fonts);
-    ctx.set_visuals(visuals);
+    ctx.set_visuals_of(Theme::Dark, visuals.clone());
+    ctx.set_visuals_of(Theme::Light, visuals);
 
     // Configure text styles
-    let mut style = (*ctx.style()).clone();
+    let mut style = (*ctx.style_of(Theme::Dark)).clone();
 
     // Use tightly spaced techno type with Orbitron
     style.text_styles = [
@@ -567,5 +571,6 @@ pub fn configure_visuals(ctx: &egui::Context) {
     style.spacing.button_padding = egui::vec2(6.0, 3.0);
     style.spacing.indent = 16.0;
 
-    ctx.set_style(style);
+    ctx.set_style_of(Theme::Dark, style.clone());
+    ctx.set_style_of(Theme::Light, style);
 }

@@ -151,81 +151,87 @@ impl ImageViewer {
         ctx.request_repaint();
         false
     }
+
+    /// Render the image viewer controls and image surface.
+    fn show_viewer(&mut self, ui: &mut egui::Ui) {
+        if self.screenshot.is_none() {
+            ui.heading(&self.title);
+            ui.separator();
+
+            ui.horizontal(|ui| {
+                ui.label(format!("{} × {}", self.image_size[0], self.image_size[1]));
+                ui.add(
+                    egui::Slider::new(&mut self.zoom, 0.1..=8.0)
+                        .logarithmic(true)
+                        .text("Zoom"),
+                );
+                if ui.button("Reset").clicked() {
+                    self.zoom = self.base_zoom;
+                }
+            });
+
+            ui.separator();
+        }
+
+        let display_size = self.display_size();
+        let padded_size = Vec2::new(
+            display_size.x + PADDING_PX * 2.0,
+            display_size.y + PADDING_PX * 2.0,
+        );
+        let available = ui.available_size();
+        let fits_without_scroll = padded_size.x <= available.x && padded_size.y <= available.y;
+
+        if fits_without_scroll {
+            if let Some(state) = &self.screenshot
+                && !state.requested
+            {
+                println!(
+                    "[egui-img debug] available={:?} padded={:?} display={:?} (fits)",
+                    available, padded_size, display_size
+                );
+            }
+            ui.allocate_ui_with_layout(
+                available,
+                egui::Layout::centered_and_justified(egui::Direction::TopDown),
+                |ui| {
+                    ui.allocate_ui_with_layout(
+                        padded_size,
+                        egui::Layout::centered_and_justified(egui::Direction::TopDown),
+                        |ui| self.paint_image(ui, display_size),
+                    );
+                },
+            );
+        } else {
+            egui::ScrollArea::both()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    let container = Vec2::new(
+                        padded_size.x.max(ui.available_width()),
+                        padded_size.y.max(ui.available_height()),
+                    );
+                    if let Some(state) = &self.screenshot && !state.requested {
+                        println!(
+                            "[egui-img debug] available={:?} padded={:?} display={:?} (scroll, container={:?})",
+                            available, padded_size, display_size, container
+                        );
+                    }
+                    ui.allocate_ui_with_layout(
+                        container,
+                        egui::Layout::centered_and_justified(egui::Direction::TopDown),
+                        |ui| self.paint_image(ui, display_size),
+                    );
+                });
+        }
+    }
 }
 
 impl eframe::App for ImageViewer {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let title = self.title.clone();
-        egui::CentralPanel::default().show(ctx, |ui| {
-            if self.screenshot.is_none() {
-                ui.heading(&title);
-                ui.separator();
-
-                ui.horizontal(|ui| {
-                    ui.label(format!("{} × {}", self.image_size[0], self.image_size[1]));
-                    ui.add(
-                        egui::Slider::new(&mut self.zoom, 0.1..=8.0)
-                            .logarithmic(true)
-                            .text("Zoom"),
-                    );
-                    if ui.button("Reset").clicked() {
-                        self.zoom = self.base_zoom;
-                    }
-                });
-
-                ui.separator();
-            }
-
-            let display_size = self.display_size();
-            let padded_size = Vec2::new(
-                display_size.x + PADDING_PX * 2.0,
-                display_size.y + PADDING_PX * 2.0,
-            );
-            let available = ui.available_size();
-            let fits_without_scroll = padded_size.x <= available.x && padded_size.y <= available.y;
-
-            if fits_without_scroll {
-                if let Some(state) = &self.screenshot && !state.requested {
-                    println!(
-                        "[egui-img debug] available={:?} padded={:?} display={:?} (fits)",
-                        available, padded_size, display_size
-                    );
-                }
-                ui.allocate_ui_with_layout(
-                    available,
-                    egui::Layout::centered_and_justified(egui::Direction::TopDown),
-                    |ui| {
-                        ui.allocate_ui_with_layout(
-                            padded_size,
-                            egui::Layout::centered_and_justified(egui::Direction::TopDown),
-                            |ui| self.paint_image(ui, display_size),
-                        );
-                    },
-                );
-            } else {
-                egui::ScrollArea::both()
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| {
-                        let container = Vec2::new(
-                            padded_size.x.max(ui.available_width()),
-                            padded_size.y.max(ui.available_height()),
-                        );
-                        if let Some(state) = &self.screenshot && !state.requested {
-                            println!(
-                                "[egui-img debug] available={:?} padded={:?} display={:?} (scroll, container={:?})",
-                                available, padded_size, display_size, container
-                            );
-                        }
-                        ui.allocate_ui_with_layout(
-                            container,
-                            egui::Layout::centered_and_justified(egui::Direction::TopDown),
-                            |ui| self.paint_image(ui, display_size),
-                        );
-                    });
-            }
-        });
-
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let _ = self.handle_screenshot(ctx);
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show_inside(ui, |ui| self.show_viewer(ui));
     }
 }
 

@@ -332,15 +332,15 @@ impl ScurveApp {
     }
 
     /// Render the top menu bar with title, tabs, and About button.
-    fn show_menu_bar(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("menu_bar")
+    fn show_menu_bar(&mut self, ui: &mut egui::Ui) {
+        egui::Panel::top("menu_bar")
             .frame(egui::Frame::new().inner_margin(egui::Margin {
                 left: theme::menu_bar::PADDING_HORIZONTAL as i8,
                 right: theme::menu_bar::PADDING_HORIZONTAL as i8,
                 top: theme::menu_bar::PADDING_VERTICAL as i8,
                 bottom: theme::menu_bar::PADDING_VERTICAL as i8,
             }))
-            .show(ctx, |ui| {
+            .show_inside(ui, |ui| {
                 ui.horizontal(|ui| {
                     // Title on the far left that links to GitHub
                     if ui
@@ -392,7 +392,7 @@ impl ScurveApp {
     }
 
     /// Handle multi-frame screenshot capture and saving to disk.
-    fn handle_screenshot(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn handle_screenshot(&mut self, ctx: &egui::Context) {
         let Some(screenshot) = self.screenshot.as_mut() else {
             return;
         };
@@ -499,10 +499,36 @@ impl ScurveApp {
                     });
             });
     }
+
+    /// Render the active main pane into the remaining content area.
+    fn show_current_pane(&mut self, ui: &mut egui::Ui) {
+        egui::CentralPanel::default().show_inside(ui, |ui| match self.app_state.current_pane {
+            Pane::TwoD => {
+                show_2d_pane(
+                    ui,
+                    &mut self.app_state,
+                    &mut self.render_cache,
+                    &mut self.selected_curve,
+                    &self.available_curves,
+                    &mut self.shared_settings,
+                );
+            }
+            Pane::ThreeD => {
+                show_3d_pane(
+                    ui,
+                    &mut self.app_state,
+                    &mut self.render_cache,
+                    &mut self.selected_3d_curve,
+                    &self.available_curves,
+                    &mut self.shared_settings,
+                );
+            }
+        });
+    }
 }
 
 impl eframe::App for ScurveApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Compute delta time using egui input time
         let now = ctx.input(|i| i.time);
         if let Some(prev) = self.last_time {
@@ -527,40 +553,6 @@ impl eframe::App for ScurveApp {
             ctx.request_repaint();
         }
 
-        self.show_menu_bar(ctx);
-
-        // Show About dialog if open
-        if self.app_state.about_open {
-            about::show_about_dialog(
-                ctx,
-                &mut self.app_state.about_open,
-                &mut self.commonmark_cache,
-            );
-        }
-
-        egui::CentralPanel::default().show(ctx, |ui| match self.app_state.current_pane {
-            Pane::TwoD => {
-                show_2d_pane(
-                    ui,
-                    &mut self.app_state,
-                    &mut self.render_cache,
-                    &mut self.selected_curve,
-                    &self.available_curves,
-                    &mut self.shared_settings,
-                );
-            }
-            Pane::ThreeD => {
-                show_3d_pane(
-                    ui,
-                    &mut self.app_state,
-                    &mut self.render_cache,
-                    &mut self.selected_3d_curve,
-                    &self.available_curves,
-                    &mut self.shared_settings,
-                );
-            }
-        });
-
         // Synchronize selection between panes based on the active pane
         AnimationController::sync_panes(
             self.app_state.current_pane,
@@ -569,10 +561,25 @@ impl eframe::App for ScurveApp {
             &self.available_curves,
         );
 
-        self.handle_screenshot(ctx, frame);
+        self.handle_screenshot(ctx);
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.show_menu_bar(ui);
+
+        // Show About dialog if open
+        if self.app_state.about_open {
+            about::show_about_dialog(
+                ui.ctx(),
+                &mut self.app_state.about_open,
+                &mut self.commonmark_cache,
+            );
+        }
+
+        self.show_current_pane(ui);
 
         if self.show_dev_overlay {
-            self.show_frame_time_overlay(ctx);
+            self.show_frame_time_overlay(ui.ctx());
         }
     }
 }
