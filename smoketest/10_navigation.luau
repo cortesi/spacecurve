@@ -1,6 +1,5 @@
 fixture("spacecurve.default")
 local vp = root()
-vp:wait_for_widget_visible("pane.2d.canvas")
 
 vp:widget_get("app.tab.3d"):click()
 vp:wait_for_widget_visible("pane.3d.curve")

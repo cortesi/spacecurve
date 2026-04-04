@@ -319,28 +319,31 @@ impl FixtureState {
 /// Fixtures that reset the GUI into known automation baselines.
 fn gui_fixtures() -> Vec<FixtureSpec> {
     vec![
-        FixtureSpec {
-            name: "spacecurve.default".to_string(),
-            description: "Stable 2D baseline with overlays closed and animation disabled."
-                .to_string(),
-        },
-        FixtureSpec {
-            name: "spacecurve.about".to_string(),
-            description: "Stable 2D baseline with the About dialog open.".to_string(),
-        },
-        FixtureSpec {
-            name: "spacecurve.settings.2d".to_string(),
-            description: "Stable 2D baseline with the settings panel open.".to_string(),
-        },
-        FixtureSpec {
-            name: "spacecurve.3d".to_string(),
-            description: "Stable 3D baseline with overlays closed and animation disabled."
-                .to_string(),
-        },
-        FixtureSpec {
-            name: "spacecurve.settings.3d".to_string(),
-            description: "Stable 3D baseline with the settings panel open.".to_string(),
-        },
+        FixtureSpec::new(
+            "spacecurve.default",
+            "Stable 2D baseline with overlays closed and animation disabled.",
+        )
+        .anchor("pane.2d.canvas"),
+        FixtureSpec::new(
+            "spacecurve.about",
+            "Stable 2D baseline with the About dialog open.",
+        )
+        .anchor("dialog.about"),
+        FixtureSpec::new(
+            "spacecurve.settings.2d",
+            "Stable 2D baseline with the settings panel open.",
+        )
+        .anchor("settings.snake_enabled"),
+        FixtureSpec::new(
+            "spacecurve.3d",
+            "Stable 3D baseline with overlays closed and animation disabled.",
+        )
+        .anchor("pane.3d.canvas"),
+        FixtureSpec::new(
+            "spacecurve.settings.3d",
+            "Stable 3D baseline with the settings panel open.",
+        )
+        .anchor("settings.spin_speed"),
     ]
 }
 

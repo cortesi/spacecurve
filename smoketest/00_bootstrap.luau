@@ -4,6 +4,9 @@ assert(#available >= 5, "spacecurve should advertise the initial fixture set")
 local fixture_names = {}
 for _, fixture_info in ipairs(available) do
     fixture_names[fixture_info.name] = true
+    if fixture_info.name == "spacecurve.default" then
+        assert(#fixture_info.anchors >= 1, "spacecurve.default should advertise readiness anchors")
+    end
 end
 
 assert(fixture_names["spacecurve.default"], "spacecurve.default fixture should exist")
@@ -17,7 +20,6 @@ vp:wait_for_widget_visible("app.tab.2d")
 vp:wait_for_widget_visible("pane.2d.curve")
 vp:wait_for_widget_visible("pane.2d.size")
 vp:wait_for_widget_visible("pane.2d.pause")
-vp:wait_for_widget_visible("pane.2d.canvas")
 
 local curve = vp:widget_get("pane.2d.curve"):state()
 assert(curve.role == "combo_box", "2D curve selector should be a combo box")

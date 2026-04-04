@@ -40,7 +40,6 @@ end)
 fixture("spacecurve.settings.3d")
 vp = root()
 vp:wait_for_widget_visible("pane.3d.canvas")
-vp:wait_for_widget_visible("settings.spin_speed")
 vp:widget_get("settings.spin_speed"):set_value(25)
 vp:wait_for_widget("settings.spin_speed", function(widget)
     return widget.value == 25

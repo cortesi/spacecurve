@@ -48,7 +48,6 @@ assert(pause_3d_after.selected == false, "pause state should persist back to 3D"
 -- Enable snake overlay via settings, verify checkbox state
 fixture("spacecurve.settings.2d")
 vp = root()
-vp:wait_for_widget_visible("settings.snake_enabled")
 
 local snake = vp:widget_get("settings.snake_enabled"):state()
 assert(snake.value == false, "snake should be disabled in fixture")

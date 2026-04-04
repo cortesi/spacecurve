@@ -5,7 +5,6 @@ local vp = root()
 vp:wait_for_widget_visible("settings.curve_opacity")
 vp:wait_for_widget_visible("settings.curve_long_jumps")
 vp:wait_for_widget_visible("settings.snake_long_jumps")
-vp:wait_for_widget_visible("settings.snake_enabled")
 vp:wait_for_widget_visible("settings.snake_length")
 vp:wait_for_widget_visible("settings.snake_speed")
 
@@ -76,7 +75,6 @@ end
 -- Verify spin_speed IS present in 3D settings
 fixture("spacecurve.settings.3d")
 vp = root()
-vp:wait_for_widget_visible("settings.spin_speed")
 
 local spin = vp:widget_get("settings.spin_speed"):state()
 assert(spin.role == "slider", "spin_speed should be a slider")

@@ -6,6 +6,8 @@ This directory holds the first `eguidev` Luau smoketests for the native
 Each script is self-contained:
 
 - it selects its own starting state with `fixture(...)`
+- fixture readiness belongs in the fixture contract, so per-test setup waits should only remain
+  when they verify post-setup interactions
 - it drives only explicit widget ids
 - it asserts visible behaviour instead of internal implementation details
 

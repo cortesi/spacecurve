@@ -24,7 +24,6 @@ end
 -- Phase 3: Settings manipulation with animation
 fixture("spacecurve.settings.2d")
 vp = root()
-vp:wait_for_widget_visible("settings.snake_enabled")
 
 vp:widget_get("settings.snake_enabled"):set_value(true)
 vp:wait_for_widget("settings.snake_enabled", function(w)
@@ -44,7 +43,6 @@ end)
 -- Phase 4: Final fixture to confirm everything still works
 fixture("spacecurve.default")
 vp = root()
-vp:wait_for_widget_visible("pane.2d.canvas")
 assert(
     vp:widget_get("pane.2d.canvas"):state().visible,
     "canvas should be visible after stress test"

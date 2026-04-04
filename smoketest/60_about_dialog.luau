@@ -1,7 +1,6 @@
 fixture("spacecurve.about")
 local vp = root()
 
-vp:wait_for_widget_visible("dialog.about")
 vp:wait_for_widget_visible("dialog.about.heading")
 vp:wait_for_widget_visible("dialog.about.subtitle")
 vp:wait_for_widget_visible("dialog.about.version")
