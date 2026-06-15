@@ -51,6 +51,9 @@ egui-img = { path = "crates/egui-img", version = "0.2.0" }
 resolver = "2"
 members = [ "crates/*", "xtask" ]
 
+[patch.crates-io]
+tmcp = { path = "/Users/cortesi/git/public/tmcp/crates/tmcp" }
+
 # Optimization profiles for web builds
 [profile.wasm-release]
 inherits = "release"
