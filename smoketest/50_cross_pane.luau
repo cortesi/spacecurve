@@ -1,6 +1,16 @@
 fixture("spacecurve.default")
 local vp = root()
-vp:wait_for_widget_visible("pane.2d.curve")
+expect("pane.2d.curve", { visible = true })
+
+local function expect_2d_canvas_painted()
+    expect("pane.2d.canvas", { visible = true })
+    expect_painted("pane.2d.canvas", 4)
+end
+
+local function expect_3d_canvas_painted()
+    expect("pane.3d.canvas", { visible = true })
+    expect_painted("pane.3d.canvas", 3)
+end
 
 -- Select a non-default curve in 2D
 local curve_2d = vp:widget_get("pane.2d.curve")
@@ -15,7 +25,7 @@ local chosen_name = options_2d[3]
 
 -- Switch to 3D: curve name should sync
 vp:widget_get("app.tab.3d"):click()
-vp:wait_for_widget_visible("pane.3d.canvas")
+expect_3d_canvas_painted()
 
 local curve_3d = vp:widget_get("pane.3d.curve"):state()
 local name_3d = (curve_3d.options :: { string })[curve_3d.value + 1]
@@ -33,7 +43,7 @@ end)
 local chosen_3d = options_3d[1]
 
 vp:widget_get("app.tab.2d"):click()
-vp:wait_for_widget_visible("pane.2d.canvas")
+expect_2d_canvas_painted()
 
 local after_2d = vp:widget_get("pane.2d.curve"):state()
 local after_name = (after_2d.options :: { string })[after_2d.value + 1]
@@ -50,7 +60,7 @@ end)
 assert(paused_2d.selected == false, "pause should toggle off in 2D")
 
 vp:widget_get("app.tab.3d"):click()
-vp:wait_for_widget_visible("pane.3d.canvas")
+expect_3d_canvas_painted()
 
 local paused_3d = vp:widget_get("pane.3d.pause"):state()
 assert(paused_3d.selected == false, "pause state should persist across pane switch")

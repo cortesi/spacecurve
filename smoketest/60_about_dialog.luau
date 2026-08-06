@@ -1,10 +1,10 @@
 fixture("spacecurve.about")
 local vp = root()
 
-vp:wait_for_widget_visible("dialog.about.heading")
-vp:wait_for_widget_visible("dialog.about.subtitle")
-vp:wait_for_widget_visible("dialog.about.version")
-vp:wait_for_widget_visible("dialog.about.close")
+expect("dialog.about.heading", { visible = true })
+expect("dialog.about.subtitle", { visible = true })
+expect("dialog.about.version", { visible = true })
+expect("dialog.about.close", { visible = true })
 
 local heading = vp:widget_get("dialog.about.heading"):state()
 assert(heading.label == "spacecurve", "heading should be 'spacecurve', got: " .. tostring(heading.label))
@@ -21,11 +21,11 @@ assert(string.sub(version.label :: string, 1, 1) == "v", "version should start w
 
 -- Close with X button
 vp:widget_get("dialog.about.close"):click()
-vp:wait_for_widget_absent("dialog.about")
+expect_absent("dialog.about")
 
 -- Reopen via menu bar and close with Escape
 vp:widget_get("app.about.toggle"):click()
-vp:wait_for_widget_visible("dialog.about")
+expect("dialog.about", { visible = true })
 
 vp:key("Escape")
-vp:wait_for_widget_absent("dialog.about")
+expect_absent("dialog.about")

@@ -37,8 +37,9 @@ eframe = { version = "0.35", features = ["glow"] }
 egui_commonmark = "0.24"
 webbrowser = "1.0"
 png = "0.18"
-eguidev_runtime = { version = "0.1.0", path = "../../../eguidev/crates/eguidev_runtime", optional = true }
-eguidev = { version = "0.1.0", path = "../../../eguidev/crates/eguidev" }
+eguidev_runtime = { path = "../../../eguidev/crates/eguidev_runtime", optional = true }
+eguidev = { path = "../../../eguidev/crates/eguidev" }
+serde_json = "1.0"
 
 # (Bevy removed; using egui/eframe)
 

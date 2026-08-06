@@ -10,9 +10,12 @@ use std::{
 };
 
 use anyhow::Result;
-use eguidev::{DevMcp, DevUiExt, FixtureError, FixtureResponse, FixtureSpec, FrameGuard};
+use eguidev::{
+    DevMcp, DevUiExt, DiagnosticError, FixtureError, FixtureResponse, FixtureSpec, FrameGuard,
+};
 #[cfg(all(not(target_arch = "wasm32"), feature = "devtools"))]
 use eguidev_runtime::attach as attach_runtime;
+use serde_json::{Value, json};
 use spacecurve::registry;
 
 /// Canonical application name used across the GUI.
@@ -350,6 +353,7 @@ fn gui_fixtures() -> Vec<FixtureSpec> {
 /// Build the DevMCP handle, optionally attaching the native automation runtime.
 fn build_devmcp(enable_mcp: bool, state: &Arc<Mutex<FixtureState>>, default_curve: &str) -> DevMcp {
     let state_for_handler = Arc::clone(state);
+    let state_for_diagnostic = Arc::clone(state);
     let default_curve = default_curve.to_string();
     let devmcp = DevMcp::new()
         .fixtures(gui_fixtures())
@@ -361,7 +365,14 @@ fn build_devmcp(enable_mcp: bool, state: &Arc<Mutex<FixtureState>>, default_curv
                 .map(|()| FixtureResponse::new())
                 .map_err(|error| FixtureError::new("spacecurve_fixture", error))
         })
-        .expect("hard-coded spacecurve fixture handler is unique");
+        .expect("hard-coded spacecurve fixture handler is unique")
+        .diagnostic("render", move || {
+            let state = state_for_diagnostic
+                .lock()
+                .map_err(|err| DiagnosticError::new("state_lock", err.to_string()))?;
+            Ok(render_diagnostic(&state))
+        })
+        .expect("hard-coded render diagnostic name is unique");
     #[cfg(all(not(target_arch = "wasm32"), feature = "devtools"))]
     if enable_mcp {
         return attach_runtime(devmcp);
@@ -369,6 +380,49 @@ fn build_devmcp(enable_mcp: bool, state: &Arc<Mutex<FixtureState>>, default_curv
 
     let _ = enable_mcp;
     devmcp
+}
+
+/// Return semantic render state for smoke tests and failure bundles.
+fn render_diagnostic(state: &FixtureState) -> Value {
+    json!({
+        "pane": pane_name(state.app_state.current_pane),
+        "overlays": {
+            "settings_open": state.app_state.settings_dropdown_open,
+            "about_open": state.app_state.about_open,
+        },
+        "settings": {
+            "curve_opacity": state.shared_settings.curve_opacity,
+            "curve_long_jumps": state.shared_settings.curve_long_jumps,
+            "snake_long_jumps": state.shared_settings.snake_long_jumps,
+            "snake_enabled": state.shared_settings.snake_enabled,
+            "snake_length": state.shared_settings.snake_length,
+            "snake_speed": state.shared_settings.snake_speed,
+            "spin_speed": state.shared_settings.spin_speed,
+        },
+        "two_d": {
+            "curve": state.selected_curve.name,
+            "size": state.selected_curve.size,
+            "snake_offset": state.selected_curve.snake_offset,
+            "screen_points": state.render_cache.cache_2d_screen.len(),
+            "snake_segments": state.render_cache.snake_segments_2d.len(),
+        },
+        "three_d": {
+            "curve": state.selected_3d_curve.name,
+            "size": state.selected_3d_curve.size,
+            "snake_offset": state.selected_3d_curve.snake_offset,
+            "screen_points": state.render_cache.cache_3d_screen.len(),
+            "snake_segments": state.render_cache.snake_segments_3d.len(),
+            "rotation_angle": state.app_state.rotation_angle,
+        },
+    })
+}
+
+/// Return the stable diagnostic name for an app pane.
+const fn pane_name(pane: Pane) -> &'static str {
+    match pane {
+        Pane::TwoD => "2d",
+        Pane::ThreeD => "3d",
+    }
 }
 
 impl ScurveApp {

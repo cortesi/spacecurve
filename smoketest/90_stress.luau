@@ -10,7 +10,12 @@ fixture("spacecurve.default")
 
 -- Phase 2: Curve switching in 2D
 local vp = root()
-vp:wait_for_widget_visible("pane.2d.curve")
+expect("pane.2d.curve", { visible = true })
+local function expect_2d_canvas_painted()
+    expect("pane.2d.canvas", { visible = true })
+    expect_painted("pane.2d.canvas", 4)
+end
+
 local curve = vp:widget_get("pane.2d.curve")
 local options = curve:state().options :: { string }
 
@@ -43,7 +48,4 @@ end)
 -- Phase 4: Final fixture to confirm everything still works
 fixture("spacecurve.default")
 vp = root()
-assert(
-    vp:widget_get("pane.2d.canvas"):state().visible,
-    "canvas should be visible after stress test"
-)
+expect_2d_canvas_painted()

@@ -2,11 +2,11 @@ fixture("spacecurve.settings.2d")
 local vp = root()
 
 -- Verify all expected settings widgets are present
-vp:wait_for_widget_visible("settings.curve_opacity")
-vp:wait_for_widget_visible("settings.curve_long_jumps")
-vp:wait_for_widget_visible("settings.snake_long_jumps")
-vp:wait_for_widget_visible("settings.snake_length")
-vp:wait_for_widget_visible("settings.snake_speed")
+expect("settings.curve_opacity", { visible = true })
+expect("settings.curve_long_jumps", { visible = true })
+expect("settings.snake_long_jumps", { visible = true })
+expect("settings.snake_length", { visible = true })
+expect("settings.snake_speed", { visible = true })
 
 -- Verify slider ranges
 local opacity = vp:widget_get("settings.curve_opacity"):state()
@@ -26,24 +26,16 @@ assert(snake_speed.range.max == 200, "snake_speed max should be 200")
 
 -- Test slider set_value round-trips at boundaries
 vp:widget_get("settings.curve_opacity"):set_value(0)
-vp:wait_for_widget("settings.curve_opacity", function(w)
-    return w.value == 0
-end)
+expect("settings.curve_opacity", { value = 0 })
 
 vp:widget_get("settings.curve_opacity"):set_value(100)
-vp:wait_for_widget("settings.curve_opacity", function(w)
-    return w.value == 100
-end)
+expect("settings.curve_opacity", { value = 100 })
 
 vp:widget_get("settings.snake_length"):set_value(0)
-vp:wait_for_widget("settings.snake_length", function(w)
-    return w.value == 0
-end)
+expect("settings.snake_length", { value = 0 })
 
 vp:widget_get("settings.snake_length"):set_value(50)
-vp:wait_for_widget("settings.snake_length", function(w)
-    return w.value == 50
-end)
+expect("settings.snake_length", { value = 50 })
 
 -- Test checkbox toggles round-trip
 local checkboxes = {
@@ -55,14 +47,10 @@ for _, id in ipairs(checkboxes) do
     local initial = vp:widget_get(id):state().value
 
     vp:widget_get(id):set_value(not initial)
-    vp:wait_for_widget(id, function(w)
-        return w.value == (not initial)
-    end)
+    expect(id, { value = not initial })
 
     vp:widget_get(id):set_value(initial)
-    vp:wait_for_widget(id, function(w)
-        return w.value == initial
-    end)
+    expect(id, { value = initial })
 end
 
 -- Verify spin_speed is NOT present in 2D settings
@@ -82,11 +70,7 @@ assert(spin.range.min == 0, "spin_speed min should be 0")
 assert(spin.range.max == 100, "spin_speed max should be 100")
 
 vp:widget_get("settings.spin_speed"):set_value(0)
-vp:wait_for_widget("settings.spin_speed", function(w)
-    return w.value == 0
-end)
+expect("settings.spin_speed", { value = 0 })
 
 vp:widget_get("settings.spin_speed"):set_value(100)
-vp:wait_for_widget("settings.spin_speed", function(w)
-    return w.value == 100
-end)
+expect("settings.spin_speed", { value = 100 })

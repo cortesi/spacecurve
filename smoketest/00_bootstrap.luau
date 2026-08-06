@@ -15,11 +15,11 @@ assert(fixture_names["spacecurve.settings.3d"], "spacecurve.settings.3d fixture 
 fixture("spacecurve.default")
 local vp = root()
 
-vp:wait_for_widget_visible("app.title")
-vp:wait_for_widget_visible("app.tab.2d")
-vp:wait_for_widget_visible("pane.2d.curve")
-vp:wait_for_widget_visible("pane.2d.size")
-vp:wait_for_widget_visible("pane.2d.pause")
+expect("app.title", { visible = true })
+expect("app.tab.2d", { visible = true })
+expect("pane.2d.curve", { visible = true })
+expect("pane.2d.size", { visible = true })
+expect("pane.2d.pause", { visible = true })
 
 local curve = vp:widget_get("pane.2d.curve"):state()
 assert(curve.role == "combo_box", "2D curve selector should be a combo box")

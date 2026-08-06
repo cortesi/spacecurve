@@ -1,46 +1,39 @@
 fixture("spacecurve.default")
 local vp = root()
-vp:wait_for_widget_visible("pane.2d.curve")
+expect("pane.2d.curve", { visible = true })
+
+local function expect_3d_canvas_painted()
+    expect("pane.3d.canvas", { visible = true })
+    expect_painted("pane.3d.canvas", 3)
+end
 
 local curve = vp:widget_get("pane.2d.curve")
 local curve_state = curve:state()
 assert(curve_state.options ~= nil, "curve selector options should be exposed")
 assert(#(curve_state.options :: { string }) >= 2, "need at least two curves to switch")
 curve:set_value(1)
-vp:wait_for_widget("pane.2d.curve", function(widget)
-    return widget.value == 1
-end)
+expect("pane.2d.curve", { value = 1 })
 
 local size = vp:widget_get("pane.2d.size")
 size:set_value(2)
-vp:wait_for_widget("pane.2d.size", function(widget)
-    return widget.value == 2
-end)
+expect("pane.2d.size", { value = 2 })
 
 vp:widget_get("pane.2d.settings.toggle"):click()
-vp:wait_for_widget_visible("settings.curve_opacity")
-vp:wait_for_widget_visible("settings.curve_long_jumps")
-vp:wait_for_widget_visible("settings.snake_length")
+expect("settings.curve_opacity", { visible = true })
+expect("settings.curve_long_jumps", { visible = true })
+expect("settings.snake_length", { visible = true })
 
 vp:widget_get("settings.curve_opacity"):set_value(80)
-vp:wait_for_widget("settings.curve_opacity", function(widget)
-    return widget.value == 80
-end)
+expect("settings.curve_opacity", { value = 80 })
 
 vp:widget_get("settings.curve_long_jumps"):set_value(true)
-vp:wait_for_widget("settings.curve_long_jumps", function(widget)
-    return widget.value == true
-end)
+expect("settings.curve_long_jumps", { value = true })
 
 vp:widget_get("settings.snake_length"):set_value(12.5)
-vp:wait_for_widget("settings.snake_length", function(widget)
-    return widget.value == 12.5
-end)
+expect("settings.snake_length", { value = 12.5 })
 
 fixture("spacecurve.settings.3d")
 vp = root()
-vp:wait_for_widget_visible("pane.3d.canvas")
+expect_3d_canvas_painted()
 vp:widget_get("settings.spin_speed"):set_value(25)
-vp:wait_for_widget("settings.spin_speed", function(widget)
-    return widget.value == 25
-end)
+expect("settings.spin_speed", { value = 25 })

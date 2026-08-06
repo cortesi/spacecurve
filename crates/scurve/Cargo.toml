@@ -39,7 +39,7 @@ pbr = "1"
 memmap2 = "0.9.9"
 colornames = "0.0.6"
 gif = "0.14.1"
-tabled = "0.20.0"
+tabled = "0.21.0"
 serde_json = "1.0.149"
 serde = { version = "1.0.228", features = ["derive"] }
 

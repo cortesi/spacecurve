@@ -1,28 +1,28 @@
 fixture("spacecurve.default")
 local vp = root()
-vp:wait_for_widget_visible("pane.2d.curve.info_toggle")
+expect("pane.2d.curve.info_toggle", { visible = true })
 
 -- Open the curve info panel
 vp:widget_get("pane.2d.curve.info_toggle"):click()
-vp:wait_for_widget_visible("pane.2d.curve.info_pane")
+expect("pane.2d.curve.info_pane", { visible = true })
 
 local info = vp:widget_get("pane.2d.curve.info_pane"):state()
 assert(info.visible, "info pane should be visible after toggle click")
 
 -- Close by clicking the toggle again
 vp:widget_get("pane.2d.curve.info_toggle"):click()
-vp:wait_for_widget_absent("pane.2d.curve.info_pane")
+expect_absent("pane.2d.curve.info_pane")
 
 -- Open again, close with Escape
 vp:widget_get("pane.2d.curve.info_toggle"):click()
-vp:wait_for_widget_visible("pane.2d.curve.info_pane")
+expect("pane.2d.curve.info_pane", { visible = true })
 
 vp:key("Escape")
-vp:wait_for_widget_absent("pane.2d.curve.info_pane")
+expect_absent("pane.2d.curve.info_pane")
 
 -- Verify info pane updates when curve changes
 vp:widget_get("pane.2d.curve.info_toggle"):click()
-vp:wait_for_widget_visible("pane.2d.curve.info_pane")
+expect("pane.2d.curve.info_pane", { visible = true })
 
 local curve = vp:widget_get("pane.2d.curve")
 local options = curve:state().options :: { string }
@@ -42,10 +42,10 @@ assert(
 -- Test 3D info panel
 fixture("spacecurve.3d")
 vp = root()
-vp:wait_for_widget_visible("pane.3d.curve.info_toggle")
+expect("pane.3d.curve.info_toggle", { visible = true })
 
 vp:widget_get("pane.3d.curve.info_toggle"):click()
-vp:wait_for_widget_visible("pane.3d.curve.info_pane")
+expect("pane.3d.curve.info_pane", { visible = true })
 
 assert(
     vp:widget_get("pane.3d.curve.info_pane"):state().visible,
@@ -53,4 +53,4 @@ assert(
 )
 
 vp:widget_get("pane.3d.curve.info_toggle"):click()
-vp:wait_for_widget_absent("pane.3d.curve.info_pane")
+expect_absent("pane.3d.curve.info_pane")
