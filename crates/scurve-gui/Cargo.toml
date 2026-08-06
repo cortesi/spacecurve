@@ -32,9 +32,9 @@ devtools = ["dep:eguidev_runtime"]
 [dependencies]
 spacecurve.workspace = true
 anyhow = "1.0"
-egui = "0.35"
-eframe = { version = "0.35", features = ["glow"] }
-egui_commonmark = "0.24"
+egui = "0.36"
+eframe = { version = "0.36", features = ["glow"] }
+egui_commonmark = "0.25"
 webbrowser = "1.0"
 png = "0.18"
 eguidev_runtime = { path = "../../../eguidev/crates/eguidev_runtime", optional = true }

@@ -12,8 +12,8 @@ categories.workspace = true
 
 [dependencies]
 anyhow = "1.0"
-eframe = "0.35"
-egui = "0.35"
+eframe = "0.36"
+egui = "0.36"
 image = "0.25"
 png = "0.18"
 
