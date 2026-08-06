@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 
 use egui::epaint::Shadow;
 use egui_commonmark::CommonMarkViewer;
-use eguidev::{DevUiExt, WidgetMeta, WidgetRole};
+use eguidev::{DevUiExt, WidgetMeta, WidgetRole, WidgetRoleMeta};
 
 use crate::{APP_NAME, theme};
 
@@ -24,11 +24,11 @@ pub fn show_about_dialog(
 
     let mut should_close = false;
     let response = show_about_area(ctx, cache, dialog_size, center_pos, &mut should_close);
-    eguidev::track_response_full(
+    eguidev::track_response(
         "dialog.about",
         &response.response,
         WidgetMeta {
-            role: WidgetRole::Window,
+            role: WidgetRoleMeta::Plain(WidgetRole::Window),
             label: Some("About".to_string()),
             visible: true,
             ..Default::default()

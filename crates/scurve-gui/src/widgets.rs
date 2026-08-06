@@ -3,7 +3,7 @@ use egui::{
     epaint::{Shadow, Stroke},
 };
 use eguidev::{
-    RoleState, WidgetMeta, WidgetRange, WidgetRole, WidgetValue, take_widget_value_override,
+    WidgetMeta, WidgetRange, WidgetRole, WidgetRoleMeta, WidgetValue, take_widget_value_override,
 };
 use spacecurve::curve_from_name;
 
@@ -12,7 +12,7 @@ use crate::theme;
 /// Record widget metadata for a custom-drawn control.
 fn track_widget(ui: &egui::Ui, id: impl Into<String>, response: &Response, mut meta: WidgetMeta) {
     meta.visible = ui.is_visible() && ui.is_rect_visible(response.rect);
-    eguidev::track_response_full(id, response, meta);
+    eguidev::track_response(id, response, meta);
 }
 
 /// Apply a queued combo-box override and return the selected option index.
@@ -216,12 +216,11 @@ pub fn curve_selector_combo(
         widget_id,
         &combo_response.response,
         WidgetMeta {
-            role: WidgetRole::ComboBox,
+            role: WidgetRoleMeta::ComboBox {
+                options: available_curves.iter().map(ToString::to_string).collect(),
+            },
             label: Some("Curve".to_string()),
             value: Some(WidgetValue::Int(selected_index as i64)),
-            role_state: Some(RoleState::ComboBox {
-                options: available_curves.iter().map(ToString::to_string).collect(),
-            }),
             ..Default::default()
         },
     );
@@ -241,11 +240,10 @@ pub fn curve_selector_combo(
         format!("{widget_id}.info_toggle"),
         &info_button,
         WidgetMeta {
-            role: WidgetRole::Button,
+            role: WidgetRoleMeta::Button {
+                selected: Some(*info_open),
+            },
             label: Some("Curve info".to_string()),
-            role_state: Some(RoleState::Button {
-                selected: *info_open,
-            }),
             ..Default::default()
         },
     );
@@ -333,11 +331,11 @@ fn draw_curve_info_pane(ctx: &egui::Context, args: InfoPaneArgs<'_>) {
                     render_info_popup_contents(ui, curve_name, dim, size, info_open);
                 });
         });
-    eguidev::track_response_full(
+    eguidev::track_response(
         format!("{widget_id}.info_pane"),
         &area.response,
         WidgetMeta {
-            role: WidgetRole::Window,
+            role: WidgetRoleMeta::Plain(WidgetRole::Window),
             label: Some("Curve info".to_string()),
             visible: true,
             ..Default::default()
@@ -458,15 +456,14 @@ pub fn size_selector_2d(ui: &mut egui::Ui, size: &mut u32, id_salt: &str, widget
         widget_id,
         &response.response,
         WidgetMeta {
-            role: WidgetRole::ComboBox,
-            label: Some("Size".to_string()),
-            value: Some(WidgetValue::Int(selected_index as i64)),
-            role_state: Some(RoleState::ComboBox {
+            role: WidgetRoleMeta::ComboBox {
                 options: OPTIONS
                     .iter()
                     .map(|option| format!("{option}×{option}"))
                     .collect(),
-            }),
+            },
+            label: Some("Size".to_string()),
+            value: Some(WidgetValue::Int(selected_index as i64)),
             ..Default::default()
         },
     );
@@ -498,15 +495,14 @@ pub fn size_selector_3d(ui: &mut egui::Ui, size: &mut u32, id_salt: &str, widget
         widget_id,
         &response.response,
         WidgetMeta {
-            role: WidgetRole::ComboBox,
-            label: Some("Size".to_string()),
-            value: Some(WidgetValue::Int(selected_index as i64)),
-            role_state: Some(RoleState::ComboBox {
+            role: WidgetRoleMeta::ComboBox {
                 options: OPTIONS
                     .iter()
                     .map(|option| format!("{option}×{option}×{option}"))
                     .collect(),
-            }),
+            },
+            label: Some("Size".to_string()),
+            value: Some(WidgetValue::Int(selected_index as i64)),
             ..Default::default()
         },
     );
@@ -542,9 +538,10 @@ pub fn pause_play_button(ui: &mut egui::Ui, paused: &mut bool, widget_id: &str) 
         widget_id,
         &response,
         WidgetMeta {
-            role: WidgetRole::Button,
+            role: WidgetRoleMeta::Button {
+                selected: Some(*paused),
+            },
             label: Some("Pause / play".to_string()),
-            role_state: Some(RoleState::Button { selected: *paused }),
             ..Default::default()
         },
     );
@@ -592,15 +589,14 @@ fn settings_panel_content(
         "settings.curve_opacity",
         &response,
         WidgetMeta {
-            role: WidgetRole::Slider,
-            label: Some("Opacity".to_string()),
-            value: Some(WidgetValue::Float(f64::from(log_value))),
-            role_state: Some(RoleState::Slider {
+            role: WidgetRoleMeta::Slider {
                 range: WidgetRange {
                     min: 0.0,
                     max: 100.0,
                 },
-            }),
+            },
+            label: Some("Opacity".to_string()),
+            value: Some(WidgetValue::Float(f64::from(log_value))),
             ..Default::default()
         },
     );
@@ -628,12 +624,11 @@ fn settings_panel_content(
         "settings.curve_long_jumps",
         &curve_long_jumps,
         WidgetMeta {
-            role: WidgetRole::Checkbox,
+            role: WidgetRoleMeta::Checkbox {
+                indeterminate: Some(false),
+            },
             label: Some("Show on curve".to_string()),
             value: Some(WidgetValue::Bool(shared.curve_long_jumps)),
-            role_state: Some(RoleState::Checkbox {
-                indeterminate: false,
-            }),
             ..Default::default()
         },
     );
@@ -648,12 +643,11 @@ fn settings_panel_content(
         "settings.snake_long_jumps",
         &snake_long_jumps,
         WidgetMeta {
-            role: WidgetRole::Checkbox,
+            role: WidgetRoleMeta::Checkbox {
+                indeterminate: Some(false),
+            },
             label: Some("Show on snake".to_string()),
             value: Some(WidgetValue::Bool(shared.snake_long_jumps)),
-            role_state: Some(RoleState::Checkbox {
-                indeterminate: false,
-            }),
             ..Default::default()
         },
     );
@@ -670,12 +664,11 @@ fn settings_panel_content(
         "settings.snake_enabled",
         &snake_enabled,
         WidgetMeta {
-            role: WidgetRole::Checkbox,
+            role: WidgetRoleMeta::Checkbox {
+                indeterminate: Some(false),
+            },
             label: Some("Enable snake overlay".to_string()),
             value: Some(WidgetValue::Bool(shared.snake_enabled)),
-            role_state: Some(RoleState::Checkbox {
-                indeterminate: false,
-            }),
             ..Default::default()
         },
     );
@@ -693,15 +686,14 @@ fn settings_panel_content(
         "settings.snake_length",
         &snake_length,
         WidgetMeta {
-            role: WidgetRole::Slider,
-            label: Some("Length".to_string()),
-            value: Some(WidgetValue::Float(f64::from(shared.snake_length))),
-            role_state: Some(RoleState::Slider {
+            role: WidgetRoleMeta::Slider {
                 range: WidgetRange {
                     min: 0.0,
                     max: 50.0,
                 },
-            }),
+            },
+            label: Some("Length".to_string()),
+            value: Some(WidgetValue::Float(f64::from(shared.snake_length))),
             ..Default::default()
         },
     );
@@ -718,15 +710,14 @@ fn settings_panel_content(
         "settings.snake_speed",
         &snake_speed,
         WidgetMeta {
-            role: WidgetRole::Slider,
-            label: Some("Speed".to_string()),
-            value: Some(WidgetValue::Float(f64::from(shared.snake_speed))),
-            role_state: Some(RoleState::Slider {
+            role: WidgetRoleMeta::Slider {
                 range: WidgetRange {
                     min: 1.0,
                     max: 200.0,
                 },
-            }),
+            },
+            label: Some("Speed".to_string()),
+            value: Some(WidgetValue::Float(f64::from(shared.snake_speed))),
             ..Default::default()
         },
     );
@@ -748,15 +739,14 @@ fn settings_panel_content(
             "settings.spin_speed",
             &spin_speed,
             WidgetMeta {
-                role: WidgetRole::Slider,
-                label: Some("Speed".to_string()),
-                value: Some(WidgetValue::Float(f64::from(shared.spin_speed))),
-                role_state: Some(RoleState::Slider {
+                role: WidgetRoleMeta::Slider {
                     range: WidgetRange {
                         min: 0.0,
                         max: 100.0,
                     },
-                }),
+                },
+                label: Some("Speed".to_string()),
+                value: Some(WidgetValue::Float(f64::from(shared.spin_speed))),
                 ..Default::default()
             },
         );
@@ -780,11 +770,10 @@ pub fn settings_dropdown(
         button_id,
         &button_response,
         WidgetMeta {
-            role: WidgetRole::Button,
+            role: WidgetRoleMeta::Button {
+                selected: Some(*settings_open),
+            },
             label: Some("Settings".to_string()),
-            role_state: Some(RoleState::Button {
-                selected: *settings_open,
-            }),
             ..Default::default()
         },
     );

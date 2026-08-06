@@ -32,13 +32,13 @@ devtools = ["dep:eguidev_runtime"]
 [dependencies]
 spacecurve.workspace = true
 anyhow = "1.0"
-egui = "0.34"
-eframe = { version = "0.34", features = ["glow"] }
-egui_commonmark = "0.23"
+egui = "0.35"
+eframe = { version = "0.35", features = ["glow"] }
+egui_commonmark = "0.24"
 webbrowser = "1.0"
 png = "0.18"
-eguidev_runtime = { version = "0.0.2", path = "/Users/cortesi/git/public/eguidev/crates/eguidev_runtime", optional = true }
-eguidev = { version = "0.0.2", path = "/Users/cortesi/git/public/eguidev/crates/eguidev" }
+eguidev_runtime = { version = "0.1.0", path = "../../../eguidev/crates/eguidev_runtime", optional = true }
+eguidev = { version = "0.1.0", path = "../../../eguidev/crates/eguidev" }
 
 # (Bevy removed; using egui/eframe)
 

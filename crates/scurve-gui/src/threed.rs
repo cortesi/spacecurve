@@ -2,7 +2,7 @@ use egui::{
     self,
     epaint::{PathShape, Stroke, Vertex},
 };
-use eguidev::{WidgetMeta, WidgetRole};
+use eguidev::{WidgetMeta, WidgetRole, WidgetRoleMeta};
 
 // pattern_from_name used in caching method only; no direct use here
 use super::{AppState, widgets};
@@ -210,11 +210,11 @@ pub fn show_3d_pane(
         }
 
         let response = ui.allocate_rect(available_rect, egui::Sense::click_and_drag());
-        eguidev::track_response_full(
+        eguidev::track_response(
             "pane.3d.canvas",
             &response,
             WidgetMeta {
-                role: WidgetRole::Unknown,
+                role: WidgetRoleMeta::Plain(WidgetRole::Unknown),
                 label: Some("3D canvas".to_string()),
                 visible: true,
                 ..Default::default()

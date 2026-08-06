@@ -2,7 +2,7 @@ use egui::{
     self,
     epaint::{PathShape, Stroke},
 };
-use eguidev::{WidgetMeta, WidgetRole};
+use eguidev::{WidgetMeta, WidgetRole, WidgetRoleMeta};
 
 use super::widgets;
 use crate::{
@@ -249,11 +249,11 @@ fn draw_2d_canvas(
     }
 
     let response = ui.allocate_rect(drawing_rect, egui::Sense::hover());
-    eguidev::track_response_full(
+    eguidev::track_response(
         "pane.2d.canvas",
         &response,
         WidgetMeta {
-            role: WidgetRole::Unknown,
+            role: WidgetRoleMeta::Plain(WidgetRole::Unknown),
             label: Some("2D canvas".to_string()),
             visible: true,
             ..Default::default()

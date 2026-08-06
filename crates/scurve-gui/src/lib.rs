@@ -10,7 +10,7 @@ use std::{
 };
 
 use anyhow::Result;
-use eguidev::{DevMcp, DevUiExt, FixtureSpec, FrameGuard};
+use eguidev::{DevMcp, DevUiExt, FixtureError, FixtureResponse, FixtureSpec, FrameGuard};
 #[cfg(all(not(target_arch = "wasm32"), feature = "devtools"))]
 use eguidev_runtime::attach as attach_runtime;
 use spacecurve::registry;
@@ -353,12 +353,15 @@ fn build_devmcp(enable_mcp: bool, state: &Arc<Mutex<FixtureState>>, default_curv
     let default_curve = default_curve.to_string();
     let devmcp = DevMcp::new()
         .fixtures(gui_fixtures())
-        .on_fixture(move |name| {
+        .on_fixture_runtime(move |call| {
             state_for_handler
                 .lock()
                 .expect("fixture state lock")
-                .apply_fixture(name, &default_curve)
-        });
+                .apply_fixture(&call.name, &default_curve)
+                .map(|()| FixtureResponse::new())
+                .map_err(|error| FixtureError::new("spacecurve_fixture", error))
+        })
+        .expect("hard-coded spacecurve fixture handler is unique");
     #[cfg(all(not(target_arch = "wasm32"), feature = "devtools"))]
     if enable_mcp {
         return attach_runtime(devmcp);
@@ -467,7 +470,7 @@ impl ScurveApp {
                     top: theme::menu_bar::PADDING_VERTICAL as i8,
                     bottom: theme::menu_bar::PADDING_VERTICAL as i8,
                 }))
-                .show_inside(ui, |ui| {
+                .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         let title_response = ui.dev_link(
                             "app.title",
@@ -621,7 +624,7 @@ impl ScurveApp {
 
     /// Render the active main pane into the remaining content area.
     fn show_current_pane(&self, s: &mut FixtureState, ui: &mut egui::Ui) {
-        egui::CentralPanel::default().show_inside(ui, |ui| match s.app_state.current_pane {
+        egui::CentralPanel::default().show(ui, |ui| match s.app_state.current_pane {
             Pane::TwoD => {
                 show_2d_pane(
                     ui,
@@ -690,8 +693,6 @@ impl eframe::App for ScurveApp {
         self.handle_screenshot(ctx);
     }
 
-    fn update(&mut self, _ctx: &egui::Context, _frame: &mut eframe::Frame) {}
-
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         let devmcp = self.devmcp.clone();
@@ -714,10 +715,6 @@ impl eframe::App for ScurveApp {
         if self.show_dev_overlay {
             self.show_frame_time_overlay(s, ui.ctx());
         }
-    }
-
-    fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
-        eguidev::raw_input_hook(&self.devmcp, ctx, raw_input);
     }
 }
 
