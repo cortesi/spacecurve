@@ -1,27 +1,27 @@
-local available = fixtures()
+local available = eguidev.fixtures()
 assert(#available >= 5, "spacecurve should advertise the initial fixture set")
 
 local fixture_names = {}
 for _, fixture_info in ipairs(available) do
     fixture_names[fixture_info.name] = true
     if fixture_info.name == "spacecurve.default" then
-        assert(#fixture_info.anchors >= 1, "spacecurve.default should advertise readiness anchors")
+        assert(#fixture_info.ready >= 1, "spacecurve.default should advertise ready conditions")
     end
 end
 
 assert(fixture_names["spacecurve.default"], "spacecurve.default fixture should exist")
 assert(fixture_names["spacecurve.settings.3d"], "spacecurve.settings.3d fixture should exist")
 
-fixture("spacecurve.default")
-local vp = root()
+eguidev.fixture("spacecurve.default")
+local vp = eguidev.root
 
-expect("app.title", { visible = true })
-expect("app.tab.2d", { visible = true })
-expect("pane.2d.curve", { visible = true })
-expect("pane.2d.size", { visible = true })
-expect("pane.2d.pause", { visible = true })
+eguidev.widget("app.title"):expect({ visible = true })
+eguidev.widget("app.tab.2d"):expect({ visible = true })
+eguidev.widget("pane.2d.curve"):expect({ visible = true })
+eguidev.widget("pane.2d.size"):expect({ visible = true })
+eguidev.widget("pane.2d.pause"):expect({ visible = true })
 
-local curve = vp:widget_get("pane.2d.curve"):state()
+local curve = assert(eguidev.widget("pane.2d.curve"):state())
 assert(curve.role == "combo_box", "2D curve selector should be a combo box")
 assert(curve.options ~= nil, "2D curve selector should expose options")
 assert(#(curve.options :: { string }) >= 1, "2D curve selector should not be empty")

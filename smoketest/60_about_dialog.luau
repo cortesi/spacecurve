@@ -1,31 +1,31 @@
-fixture("spacecurve.about")
-local vp = root()
+eguidev.fixture("spacecurve.about")
+local vp = eguidev.root
 
-expect("dialog.about.heading", { visible = true })
-expect("dialog.about.subtitle", { visible = true })
-expect("dialog.about.version", { visible = true })
-expect("dialog.about.close", { visible = true })
+eguidev.widget("dialog.about.heading"):expect({ visible = true })
+eguidev.widget("dialog.about.subtitle"):expect({ visible = true })
+eguidev.widget("dialog.about.version"):expect({ visible = true })
+eguidev.widget("dialog.about.close"):expect({ visible = true })
 
-local heading = vp:widget_get("dialog.about.heading"):state()
+local heading = assert(eguidev.widget("dialog.about.heading"):state())
 assert(heading.label == "spacecurve", "heading should be 'spacecurve', got: " .. tostring(heading.label))
 
-local subtitle = vp:widget_get("dialog.about.subtitle"):state()
+local subtitle = assert(eguidev.widget("dialog.about.subtitle"):state())
 assert(
     subtitle.label == "Space-filling curve playground",
     "subtitle text mismatch: " .. tostring(subtitle.label)
 )
 
-local version = vp:widget_get("dialog.about.version"):state()
+local version = assert(eguidev.widget("dialog.about.version"):state())
 assert(version.label ~= nil, "version label should not be nil")
 assert(string.sub(version.label :: string, 1, 1) == "v", "version should start with 'v'")
 
 -- Close with X button
-vp:widget_get("dialog.about.close"):click()
-expect_absent("dialog.about")
+eguidev.widget("dialog.about.close"):click()
+eguidev.widget("dialog.about"):expect({ present = false })
 
 -- Reopen via menu bar and close with Escape
-vp:widget_get("app.about.toggle"):click()
-expect("dialog.about", { visible = true })
+eguidev.widget("app.about.toggle"):click()
+eguidev.widget("dialog.about"):expect({ visible = true })
 
 vp:key("Escape")
-expect_absent("dialog.about")
+eguidev.widget("dialog.about"):expect({ present = false })

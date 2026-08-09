@@ -1,51 +1,51 @@
 -- Stress test: rapid fixture cycling and settings manipulation.
 
 -- Phase 1: Rapid fixture cycling
-fixture("spacecurve.default")
-fixture("spacecurve.3d")
-fixture("spacecurve.about")
-fixture("spacecurve.settings.2d")
-fixture("spacecurve.settings.3d")
-fixture("spacecurve.default")
+eguidev.fixture("spacecurve.default")
+eguidev.fixture("spacecurve.3d")
+eguidev.fixture("spacecurve.about")
+eguidev.fixture("spacecurve.settings.2d")
+eguidev.fixture("spacecurve.settings.3d")
+eguidev.fixture("spacecurve.default")
 
 -- Phase 2: Curve switching in 2D
-local vp = root()
-expect("pane.2d.curve", { visible = true })
+local vp = eguidev.root
+eguidev.widget("pane.2d.curve"):expect({ visible = true })
 local function expect_2d_canvas_painted()
-    expect("pane.2d.canvas", { visible = true })
-    expect_painted("pane.2d.canvas", 4)
+    eguidev.widget("pane.2d.canvas"):expect({ visible = true })
+    eguidev.widget("pane.2d.canvas"):expect({ painted = { min_colors = 4 } })
 end
 
-local curve = vp:widget_get("pane.2d.curve")
-local options = curve:state().options :: { string }
+local curve = eguidev.widget("pane.2d.curve")
+local options = assert(curve:state()).options :: { string }
 
 for i = 1, #options do
     curve:set_value(i - 1)
-    vp:wait_for_widget("pane.2d.curve", function(w)
-        return w.value == i - 1
+    eguidev.widget("pane.2d.curve"):wait(function(w)
+        return w ~= nil and w.value == i - 1
     end)
 end
 
 -- Phase 3: Settings manipulation with animation
-fixture("spacecurve.settings.2d")
-vp = root()
+eguidev.fixture("spacecurve.settings.2d")
+vp = eguidev.root
 
-vp:widget_get("settings.snake_enabled"):set_value(true)
-vp:wait_for_widget("settings.snake_enabled", function(w)
-    return w.value == true
+eguidev.widget("settings.snake_enabled"):set_value(true)
+eguidev.widget("settings.snake_enabled"):wait(function(w)
+    return w ~= nil and w.value == true
 end)
 
-vp:widget_get("settings.snake_length"):set_value(25)
-vp:wait_for_widget("settings.snake_length", function(w)
-    return w.value == 25
+eguidev.widget("settings.snake_length"):set_value(25)
+eguidev.widget("settings.snake_length"):wait(function(w)
+    return w ~= nil and w.value == 25
 end)
 
-vp:widget_get("settings.curve_opacity"):set_value(50)
-vp:wait_for_widget("settings.curve_opacity", function(w)
-    return w.value == 50
+eguidev.widget("settings.curve_opacity"):set_value(50)
+eguidev.widget("settings.curve_opacity"):wait(function(w)
+    return w ~= nil and w.value == 50
 end)
 
 -- Phase 4: Final fixture to confirm everything still works
-fixture("spacecurve.default")
-vp = root()
+eguidev.fixture("spacecurve.default")
+vp = eguidev.root
 expect_2d_canvas_painted()

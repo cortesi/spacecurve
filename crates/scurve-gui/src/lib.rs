@@ -326,27 +326,27 @@ fn gui_fixtures() -> Vec<FixtureSpec> {
             "spacecurve.default",
             "Stable 2D baseline with overlays closed and animation disabled.",
         )
-        .anchor("pane.2d.canvas"),
+        .ready("pane.2d.canvas"),
         FixtureSpec::new(
             "spacecurve.about",
             "Stable 2D baseline with the About dialog open.",
         )
-        .anchor("dialog.about"),
+        .ready("dialog.about"),
         FixtureSpec::new(
             "spacecurve.settings.2d",
             "Stable 2D baseline with the settings panel open.",
         )
-        .anchor("settings.snake_enabled"),
+        .ready("settings.snake_enabled"),
         FixtureSpec::new(
             "spacecurve.3d",
             "Stable 3D baseline with overlays closed and animation disabled.",
         )
-        .anchor("pane.3d.canvas"),
+        .ready("pane.3d.canvas"),
         FixtureSpec::new(
             "spacecurve.settings.3d",
             "Stable 3D baseline with the settings panel open.",
         )
-        .anchor("settings.spin_speed"),
+        .ready("settings.spin_speed"),
     ]
 }
 

@@ -8,22 +8,22 @@ local fixture_names = {
 }
 
 for _, name in ipairs(fixture_names) do
-    fixture(name)
-    local vp = root()
-    local widgets = vp:widget_list()
+    eguidev.fixture(name)
+    local vp = eguidev.root
+    local widgets = vp:widgets()
     assert(#widgets > 0, "fixture " .. name .. " should produce visible widgets")
 end
 
 -- Second pass proves fixtures can be reapplied
 for _, name in ipairs(fixture_names) do
-    fixture(name)
-    local vp = root()
-    local widgets = vp:widget_list()
+    eguidev.fixture(name)
+    local vp = eguidev.root
+    local widgets = vp:widgets()
     assert(#widgets > 0, "fixture " .. name .. " should still work on second application")
 end
 
 -- Verify rapid alternation between fixtures
 for _ = 1, 5 do
-    fixture("spacecurve.default")
-    fixture("spacecurve.3d")
+    eguidev.fixture("spacecurve.default")
+    eguidev.fixture("spacecurve.3d")
 end

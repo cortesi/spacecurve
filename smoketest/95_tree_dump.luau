@@ -11,19 +11,19 @@ local function find_dump_widget(node: any, id: string): any?
     return nil
 end
 
-fixture("spacecurve.settings.2d")
-local vp = root()
-expect("pane.2d.canvas", { visible = true })
-wait_until(function()
-    return diagnostic("render").pane == "2d"
+eguidev.fixture("spacecurve.settings.2d")
+local vp = eguidev.root
+eguidev.widget("pane.2d.canvas"):expect({ visible = true })
+eguidev.wait(function()
+    return eguidev.diagnostic("render").pane == "2d"
 end)
 
-local two_d_render = diagnostic("render") :: any
+local two_d_render = eguidev.diagnostic("render") :: any
 assert(two_d_render.overlays.settings_open == true, "render diagnostic should expose settings state")
 assert(two_d_render.two_d.curve ~= "", "render diagnostic should expose the 2D curve")
 assert(two_d_render.two_d.screen_points > 0, "render diagnostic should expose rendered 2D points")
 
-local two_d_tree = dump({ root = "pane.2d", fields = "full" }) :: any
+local two_d_tree = eguidev.dump({ root = eguidev.widget("pane.2d"), fields = "full" }) :: any
 assert(#two_d_tree.viewports == 1, "2D pane dump should include one viewport")
 assert(#two_d_tree.viewports[1].widgets == 1, "2D pane dump should be rooted at pane.2d")
 
@@ -34,22 +34,22 @@ assert(two_d_canvas ~= nil, "2D pane dump should include the canvas")
 assert(two_d_canvas.visible == true, "2D canvas should be visible in the dump")
 assert(two_d_canvas.label == "2D canvas", "2D canvas label should be preserved")
 
-local two_d_text = dump_text({ root = "pane.2d" })
+local two_d_text = eguidev.dump_text({ root = eguidev.widget("pane.2d") })
 assert(string.find(two_d_text, "pane.2d.canvas", 1, true) ~= nil, "text dump should include 2D canvas")
 
-fixture("spacecurve.settings.3d")
-vp = root()
-expect("pane.3d.canvas", { visible = true })
-wait_until(function()
-    return diagnostic("render").pane == "3d"
+eguidev.fixture("spacecurve.settings.3d")
+vp = eguidev.root
+eguidev.widget("pane.3d.canvas"):expect({ visible = true })
+eguidev.wait(function()
+    return eguidev.diagnostic("render").pane == "3d"
 end)
 
-local three_d_render = diagnostic("render") :: any
+local three_d_render = eguidev.diagnostic("render") :: any
 assert(three_d_render.overlays.settings_open == true, "render diagnostic should expose 3D settings state")
 assert(three_d_render.three_d.curve ~= "", "render diagnostic should expose the 3D curve")
 assert(three_d_render.three_d.screen_points > 0, "render diagnostic should expose rendered 3D points")
 
-local three_d_tree = dump({ root = "pane.3d", fields = "full" }) :: any
+local three_d_tree = eguidev.dump({ root = eguidev.widget("pane.3d"), fields = "full" }) :: any
 assert(#three_d_tree.viewports == 1, "3D pane dump should include one viewport")
 assert(#three_d_tree.viewports[1].widgets == 1, "3D pane dump should be rooted at pane.3d")
 
