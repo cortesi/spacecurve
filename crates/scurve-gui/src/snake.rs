@@ -41,7 +41,8 @@ pub fn advance_snake_offset(
     }
 }
 
-/// Calculate which segments the snake should occupy given an offset and length percentage.
+/// Calculate which segments the snake should occupy given an offset and length
+/// percentage.
 pub fn calculate_snake_segments(
     snake_offset: f32,
     snake_length_percent: f32,

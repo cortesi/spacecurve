@@ -1,5 +1,7 @@
 //! GUI application for exploring space‑filling curves using egui/eframe.
 
+#[cfg(not(target_arch = "wasm32"))]
+use std::io::{Error, ErrorKind};
 use std::{
     fs::File,
     io::BufWriter,
@@ -152,7 +154,8 @@ pub struct AppState {
     pub snake_time: f32,
     /// Whether the settings dropdown is currently open.
     pub settings_dropdown_open: bool,
-    /// Persisted position for the settings dropdown to avoid frame-to-frame jitter.
+    /// Persisted position for the settings dropdown to avoid frame-to-frame
+    /// jitter.
     pub settings_dropdown_pos: Option<egui::Pos2>,
     /// Whether the About dialog is currently open.
     pub about_open: bool,
@@ -814,7 +817,8 @@ pub fn gui_with_screenshot(screenshot_config: Option<ScreenshotConfig>) -> Resul
     })
 }
 
-/// Launch the native GUI with custom options, including dev/experimental curves.
+/// Launch the native GUI with custom options, including dev/experimental
+/// curves.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn gui_with_options(options: GuiOptions) -> Result<()> {
     validate_gui_options(&options)?;
@@ -844,8 +848,8 @@ pub fn gui_with_options(options: GuiOptions) -> Result<()> {
 fn validate_gui_options(options: &GuiOptions) -> Result<()> {
     #[cfg(not(feature = "devtools"))]
     if options.enable_mcp {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
             "--dev-mcp requires building scurve with --features devtools",
         )
         .into());

@@ -46,7 +46,8 @@ pub fn bit_transpose<C: Coord>(d: u32, v: &[C]) -> SmallVec<[C; 8]> {
     ret
 }
 
-/// Interleave the least-significant bits of each coordinate into a single value.
+/// Interleave the least-significant bits of each coordinate into a single
+/// value.
 ///
 /// `bits_per_axis` defines how many bits should be read from every coordinate.
 /// Bits are interleaved from least-significant to most-significant order to

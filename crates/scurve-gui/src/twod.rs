@@ -145,7 +145,8 @@ fn draw_2d_canvas(
                 .max(1.0);
 
             // Calculate interpolated tail position
-            // When we snap for a long jump, we update both segment and frac to the snapped position
+            // When we snap for a long jump, we update both segment and frac to the snapped
+            // position
             let tail_pos = snake_offset % curve_len;
             let raw_tail_segment = tail_pos.floor() as usize % curve_points.len();
             let raw_tail_frac = tail_pos.fract();
@@ -373,9 +374,10 @@ fn draw_snake_overlay(
     }
 
     // Build the list of integer point indices from tail to head.
-    // The path goes: tail_screen -> point[first_int] -> ... -> point[last_int] -> head_screen
-    // where first_int is the first integer point AFTER the tail interpolation position
-    // and last_int is the last integer point BEFORE the head interpolation position.
+    // The path goes: tail_screen -> point[first_int] -> ... -> point[last_int] ->
+    // head_screen where first_int is the first integer point AFTER the tail
+    // interpolation position and last_int is the last integer point BEFORE the
+    // head interpolation position.
     let first_int = if tail_frac > 0.0 {
         (tail_segment + 1) % n
     } else {
@@ -472,7 +474,8 @@ fn draw_snake_overlay(
         if head_adjacent && !current_run.is_empty() {
             current_run.push(head_screen);
         } else if !current_run.is_empty() {
-            // Non-adjacent: end run at head_segment, don't add interpolated point
+            // Non-adjacent: end run at head_segment, don't add interpolated
+            // point
         }
     }
 

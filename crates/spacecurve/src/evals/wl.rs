@@ -1,9 +1,9 @@
 //! Windowed locality (WL∞/WL2) profiles over segment lengths.
 //!
-//! For each segment length `L`, this evaluation considers contiguous index windows
-//! `[i, i + L - 1]` and measures the distance between the endpoints in space. The
-//! per-window distance is normalized by `L` and scaled by `d` (the curve
-//! dimensionality) to make values comparable across dimensions:
+//! For each segment length `L`, this evaluation considers contiguous index
+//! windows `[i, i + L - 1]` and measures the distance between the endpoints in
+//! space. The per-window distance is normalized by `L` and scaled by `d` (the
+//! curve dimensionality) to make values comparable across dimensions:
 //!
 //! - `WL∞(L) = max_i dist∞(p_i, p_{i+L-1})^d / L`
 //! - `WL2(L) = max_i dist2(p_i, p_{i+L-1})^d / L`

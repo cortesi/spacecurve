@@ -241,7 +241,8 @@ enum Commands {
             value_name = "START:END",
             help = "Draw only the curve segment from START (inclusive) to END (exclusive)"
         )]
-        /// Optional start/end offsets (START:END) for the rendered curve segment.
+        /// Optional start/end offsets (START:END) for the rendered curve
+        /// segment.
         chunk: Option<ChunkOffsets>,
 
         #[arg(help = &format!("Pattern name (options: {})", registry::CURVE_NAMES.join(", ")), value_parser = parse_curve_name)]

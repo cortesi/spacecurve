@@ -10,9 +10,10 @@ use crate::{
 /// SpaceCurve is the core trait for space‑filling curves.
 ///
 /// Invariants and preconditions (apply to all implementations):
-/// - `dimensions()` is fixed at construction and defines the required point arity.
-/// - `index` expects a [`point::Point`] whose length matches `dimensions()` and whose
-///   coordinates lie in `[0, size-1]` for the curve.
+/// - `dimensions()` is fixed at construction and defines the required point
+///   arity.
+/// - `index` expects a [`point::Point`] whose length matches `dimensions()` and
+///   whose coordinates lie in `[0, size-1]` for the curve.
 /// - `point` expects `index < length()`.
 /// - Constructors are responsible for validating dimensionality and bounds (via
 ///   the shared [`spec::GridSpec`] helpers); callers should treat out‑of‑range

@@ -124,13 +124,15 @@ fn equal_length_file_maps_last_byte() {
 
 #[test]
 fn large_file_no_oob_and_dimensions_ok() {
-    // Large file relative to curve length should render successfully with correct dimensions.
+    // Large file relative to curve length should render successfully with correct
+    // dimensions.
     let width = 32u32; // length 1024
     let plen = (width * width) as usize;
     let mlen = plen * 32 + 3; // much larger than plen, but small enough for CI
     let td = tempdir().expect("tmp");
     let input = td.path().join("large.bin");
-    // Progressive content to exercise scaling without relying on exact final mapping
+    // Progressive content to exercise scaling without relying on exact final
+    // mapping
     let mut data = vec![0x00u8; mlen];
     data[0] = 0x00;
     data[mlen - 1] = 0xff; // ensure high value present

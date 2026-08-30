@@ -1,6 +1,8 @@
-//! Property-based tests verifying the bijection property of space-filling curves.
+//! Property-based tests verifying the bijection property of space-filling
+//! curves.
 //!
-//! All curves must satisfy: curve.index(curve.point(i)) == i for any valid index i.
+//! All curves must satisfy: curve.index(curve.point(i)) == i for any valid
+//! index i.
 
 #![allow(missing_docs, clippy::tests_outside_test_module)]
 
@@ -8,7 +10,8 @@ use proptest::prelude::*;
 use spacecurve::{DefaultIndex, curve_from_name, registry};
 
 /// Generate test configurations: (curve_name, dimension, size, max_index).
-/// We use smaller sizes to keep tests fast while still testing the bijection property.
+/// We use smaller sizes to keep tests fast while still testing the bijection
+/// property.
 fn curve_configs() -> Vec<(&'static str, u32, u32, DefaultIndex)> {
     vec![
         // Hilbert (power-of-two, order*dim < 32)

@@ -1,4 +1,5 @@
-//! Integration tests for CLI commands: vis, map, allrgb, evals, and error handling.
+//! Integration tests for CLI commands: vis, map, allrgb, evals, and error
+//! handling.
 
 #![allow(missing_docs, clippy::tests_outside_test_module, deprecated)]
 

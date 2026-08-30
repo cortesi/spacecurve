@@ -18,18 +18,19 @@ use crate::{
 
 /// Number of depth buckets for O(N) "sorting".
 ///
-/// Instead of fully sorting 32k+ segments (O(N log N)), we bucket them into fixed depth slices.
-/// All segments in a bucket share the same Z-depth for styling purposes, allowing us to
-/// batch them into a single mesh. 128 bins provides smooth enough depth gradation that
-/// the discrete steps are not noticeable.
+/// Instead of fully sorting 32k+ segments (O(N log N)), we bucket them into
+/// fixed depth slices. All segments in a bucket share the same Z-depth for
+/// styling purposes, allowing us to batch them into a single mesh. 128 bins
+/// provides smooth enough depth gradation that the discrete steps are not
+/// noticeable.
 const NUM_DEPTH_BINS: usize = 128;
 
 /// Helper to tessellate a line segment into a mesh (as a simple quad).
 ///
-/// We do this manually rather than using `painter.line_segment` to allow batching.
-/// `egui`'s immediate mode painter handles thousands of individual line calls poorly,
-/// as each one adds overhead. By manually pushing vertices to a single `Mesh`, we
-/// reduce the overhead to essentially zero.
+/// We do this manually rather than using `painter.line_segment` to allow
+/// batching. `egui`'s immediate mode painter handles thousands of individual
+/// line calls poorly, as each one adds overhead. By manually pushing vertices
+/// to a single `Mesh`, we reduce the overhead to essentially zero.
 fn add_segment_to_mesh(
     mesh: &mut egui::Mesh,
     a: egui::Pos2,
@@ -303,7 +304,8 @@ fn draw_3d_space_curve(
             .max(1.0);
 
         // Calculate interpolated tail position
-        // When we snap for a long jump, we update both segment and frac to the snapped position
+        // When we snap for a long jump, we update both segment and frac to the snapped
+        // position
         let tail_pos = snake_offset % curve_len;
         let raw_tail_segment = tail_pos.floor() as usize % original_curve_points.len();
         let raw_tail_frac = tail_pos.fract();
@@ -460,7 +462,8 @@ fn draw_3d_space_curve(
     }
 }
 
-/// Project integer 3D curve points into rotated 3D coordinates and 2D screen positions.
+/// Project integer 3D curve points into rotated 3D coordinates and 2D screen
+/// positions.
 #[allow(clippy::too_many_arguments)]
 fn project_points(
     original: &[[u32; 3]],
@@ -522,7 +525,8 @@ fn compute_shorten_caps(connected: &[bool], caps: &mut Vec<(bool, bool)>) {
     }
 }
 
-/// Build a list of segment indices with their average depth for painter sorting.
+/// Build a list of segment indices with their average depth for painter
+/// sorting.
 fn build_segment_depths(
     pts3d: &[[f32; 3]],
     connected: &[bool],
@@ -544,11 +548,13 @@ fn build_segment_depths(
 /// Draw depth‑sorted curve segments using depth binning.
 ///
 /// This function implements the core optimization:
-/// 1. **Binning**: Distribute segments into `NUM_DEPTH_BINS` buckets based on depth.
-/// 2. **Batching**: For each bin, generate a single `egui::Mesh` containing all segments.
+/// 1. **Binning**: Distribute segments into `NUM_DEPTH_BINS` buckets based on
+///    depth.
+/// 2. **Batching**: For each bin, generate a single `egui::Mesh` containing all
+///    segments.
 ///
-/// This reduces the number of draw calls from O(N) (e.g., 32,000) to O(BINS) (128),
-/// providing a massive performance boost.
+/// This reduces the number of draw calls from O(N) (e.g., 32,000) to O(BINS)
+/// (128), providing a massive performance boost.
 fn draw_curve_segments(
     painter: &egui::Painter,
     pts2d: &[egui::Pos2],
@@ -609,7 +615,8 @@ fn draw_curve_segments(
     }
 }
 
-/// Build a membership mask for snake segments that should be included given visibility rules.
+/// Build a membership mask for snake segments that should be included given
+/// visibility rules.
 fn snake_included_mask<'a>(
     snake_segments: &[usize],
     connected: &[bool],
@@ -632,7 +639,8 @@ fn snake_included_mask<'a>(
     &scratch[..len]
 }
 
-/// Turn snake segments into depth‑sortable draw primitives with interpolated endpoints.
+/// Turn snake segments into depth‑sortable draw primitives with interpolated
+/// endpoints.
 ///
 /// The snake path is built from `tail_screen` to `head_screen`, including all
 /// intermediate integer points. This ensures smooth motion as the fractional
@@ -812,9 +820,10 @@ fn collect_snake_draws(
 
 /// Render snake primitives with proper cap handling using depth binning.
 ///
-/// Similar to `draw_curve_segments`, this batches the snake segments into meshes
-/// to minimize draw calls. Continuous polyline paths (length >= 3) are still drawn
-/// as paths because they are already efficient, but isolated segments are batched.
+/// Similar to `draw_curve_segments`, this batches the snake segments into
+/// meshes to minimize draw calls. Continuous polyline paths (length >= 3) are
+/// still drawn as paths because they are already efficient, but isolated
+/// segments are batched.
 fn draw_snake_draws(painter: &egui::Painter, draws: &[SnakeDraw], bins: &mut [Vec<usize>]) {
     for bin in bins.iter_mut() {
         bin.clear();
@@ -947,7 +956,8 @@ fn draw_isolated_points(
     }
 }
 
-/// Draw a glowing marker at the given screen position with depth-based brightness.
+/// Draw a glowing marker at the given screen position with depth-based
+/// brightness.
 fn draw_head_marker_at(painter: &egui::Painter, pos: egui::Pos2, depth: f32) {
     let brightness = segment_brightness(depth);
 

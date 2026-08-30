@@ -63,4 +63,13 @@ lto = true
 codegen-units = 1
 
 [profile.dev.package."*"]
+debug = false
 opt-level = 3
+
+[workspace.metadata.nanocode]
+schema-version = 1
+requires-nanocode = ">=0.1, <0.2"
+features = "default"
+
+[profile.dev]
+debug = "line-tables-only"

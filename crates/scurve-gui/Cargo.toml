@@ -16,6 +16,7 @@ workspace = true
 
 # Enable building as both executable and library for web compilation
 [lib]
+doctest = false
 crate-type = ["cdylib", "rlib"]
 
 # Web binary target only

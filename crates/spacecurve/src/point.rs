@@ -16,9 +16,11 @@ impl<C: Coord> Point<C> {
         Self(vec.into())
     }
 
-    /// Create a new `Point`, asserting the coordinate count matches `dimension`.
+    /// Create a new `Point`, asserting the coordinate count matches
+    /// `dimension`.
     ///
-    /// This is a convenience to avoid repeating dimension checks at every callsite.
+    /// This is a convenience to avoid repeating dimension checks at every
+    /// callsite.
     pub fn new_with_dimension(dimension: u32, vec: impl Into<SmallVec<[C; 8]>>) -> Self {
         let coords = vec.into();
         debug_assert_eq!(

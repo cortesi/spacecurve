@@ -1,4 +1,5 @@
-//! Grid specification helpers used by curve constructors and registry validation.
+//! Grid specification helpers used by curve constructors and registry
+//! validation.
 
 use crate::{
     error,
@@ -7,10 +8,12 @@ use crate::{
     types::{Coord, Index},
 };
 
-/// Describes the dimensionality and side length of a grid along with derived values.
+/// Describes the dimensionality and side length of a grid along with derived
+/// values.
 ///
-/// The helper centralizes guard logic (non‑zero sizes, power‑of‑two checks, overflow checks)
-/// so curve constructors can focus on their own algorithmic invariants.
+/// The helper centralizes guard logic (non‑zero sizes, power‑of‑two checks,
+/// overflow checks) so curve constructors can focus on their own algorithmic
+/// invariants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GridSpec<C: Coord, I: Index> {
     /// Number of dimensions in the grid.
@@ -74,7 +77,8 @@ impl<C: Coord, I: Index> GridSpec<C, I> {
         Ok(spec)
     }
 
-    /// Require that the total number of index bits is strictly less than `limit`.
+    /// Require that the total number of index bits is strictly less than
+    /// `limit`.
     ///
     /// Useful for curves that encode indices using `bits_per_axis * dimension`.
     pub fn require_index_bits_lt(&self, limit: u32) -> error::Result<()> {

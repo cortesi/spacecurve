@@ -12,7 +12,7 @@
 Prod output: `dist/` with `index.html`, `scurve-web.js`, `scurve-web_bg.wasm` (auto-optimized with `wasm-opt` if available).
 
 ## Tidy
-- Format + clippy (with fixes): `cargo xtask tidy`
+- Format + clippy (with fixes): `nanocode tidy`
 
 ## Experimental curves
 - Experimental patterns (currently Hairy Onion) are hidden in the GUI by default.

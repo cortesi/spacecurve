@@ -81,7 +81,8 @@ pub struct MapRender {
     pub image: image::RgbaImage,
     /// Actual curve dimension (side length) used for the grid.
     pub side: u32,
-    /// Whether the requested dimension had to be adjusted upward to satisfy curve constraints.
+    /// Whether the requested dimension had to be adjusted upward to satisfy
+    /// curve constraints.
     pub adjusted: bool,
 }
 
@@ -89,7 +90,8 @@ pub struct MapRender {
 pub struct SnakeRender {
     /// Actual curve dimension (side length) used for the grid.
     pub side: u32,
-    /// Whether the requested dimension had to be adjusted upward to satisfy curve constraints.
+    /// Whether the requested dimension had to be adjusted upward to satisfy
+    /// curve constraints.
     pub adjusted: bool,
 }
 
@@ -113,7 +115,8 @@ pub struct SnakeOptions<'a> {
     pub full_curve: Option<image::Rgba<u8>>,
 }
 
-/// Find the smallest curve dimension ≥ `requested_side` that satisfies the pattern constraints.
+/// Find the smallest curve dimension ≥ `requested_side` that satisfies the
+/// pattern constraints.
 fn resolve_curve_dimension(pattern_name: &str, requested_side: u32) -> Result<(u32, bool)> {
     const DIMENSION: u32 = 2;
 
@@ -178,9 +181,11 @@ fn resolve_curve_dimension(pattern_name: &str, requested_side: u32) -> Result<(u
 /// Render a map of a curve using a requested grid dimension.
 ///
 /// - `size`: Output image width/height in pixels.
-/// - `curve_dimension`: Requested side length for the curve grid (renders `dimension×dimension` points).
+/// - `curve_dimension`: Requested side length for the curve grid (renders
+///   `dimension×dimension` points).
 /// - `pattern_name`: Curve name.
-/// - `chunk`: Optional [start, end) offsets limiting which part of the curve is drawn.
+/// - `chunk`: Optional [start, end) offsets limiting which part of the curve is
+///   drawn.
 /// - `stroke`: Stroke rendering options.
 pub fn map(
     size: u32,
@@ -222,7 +227,8 @@ pub fn map(
     })
 }
 
-/// Generate an animated snake GIF where a chunk of the curve marches across all offsets.
+/// Generate an animated snake GIF where a chunk of the curve marches across all
+/// offsets.
 pub fn snake(options: SnakeOptions<'_>) -> Result<SnakeRender> {
     let SnakeOptions {
         size,
@@ -319,7 +325,8 @@ pub fn snake(options: SnakeOptions<'_>) -> Result<SnakeRender> {
 
 /// Convert frames-per-second into a GIF frame delay (hundredths of a second).
 fn frame_delay_from_fps(fps: u16) -> u16 {
-    // GIF delays are centiseconds; clamp to at least 1cs to avoid zero-delay frames.
+    // GIF delays are centiseconds; clamp to at least 1cs to avoid zero-delay
+    // frames.
     let fps = fps.max(1);
     ((100 + (fps / 2)) / fps).max(1)
 }

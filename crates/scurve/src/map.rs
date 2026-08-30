@@ -97,10 +97,10 @@ fn draw_line(
 
 /// Render a square `size×size` image showing a sampled map of `pattern`.
 ///
-/// `side` controls the logical grid size of the pattern (e.g. 16 for a 16×16 Hilbert
-/// traversal). `chunk` limits which sequential points are drawn from the pattern using
-/// half-open offsets `[start, end)`. `stroke` controls line width, long-edge handling,
-/// and colors.
+/// `side` controls the logical grid size of the pattern (e.g. 16 for a 16×16
+/// Hilbert traversal). `chunk` limits which sequential points are drawn from
+/// the pattern using half-open offsets `[start, end)`. `stroke` controls line
+/// width, long-edge handling, and colors.
 pub fn render_map_image(
     size: u32,
     side: u32,
@@ -118,11 +118,12 @@ pub fn render_map_image(
     )
 }
 
-/// Draw a contiguous curve segment starting at `start` with `len` points into `img`.
+/// Draw a contiguous curve segment starting at `start` with `len` points into
+/// `img`.
 ///
-/// The segment wraps around the curve when `start + len` exceeds the curve length. Styling and
-/// long-edge handling are controlled by `stroke`. The existing image contents are preserved and
-/// the segment is painted on top.
+/// The segment wraps around the curve when `start + len` exceeds the curve
+/// length. Styling and long-edge handling are controlled by `stroke`. The
+/// existing image contents are preserved and the segment is painted on top.
 fn draw_chunk(
     img: &mut RgbaImage,
     size: u32,
@@ -169,10 +170,11 @@ fn draw_chunk(
     }
 }
 
-/// Render a square image showing a contiguous curve segment starting at `start` with `len` points.
+/// Render a square image showing a contiguous curve segment starting at `start`
+/// with `len` points.
 ///
-/// The segment wraps around the curve when `start + len` exceeds the curve length. Styling and
-/// long-edge handling are controlled by `stroke`.
+/// The segment wraps around the curve when `start + len` exceeds the curve
+/// length. Styling and long-edge handling are controlled by `stroke`.
 pub fn render_chunk_image(
     size: u32,
     side: u32,

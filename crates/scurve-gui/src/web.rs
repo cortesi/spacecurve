@@ -8,7 +8,8 @@ use web_sys::{HtmlCanvasElement, UrlSearchParams, window};
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(start)]
-/// Launch the spacecurve GUI inside the existing canvas element when running on the web.
+/// Launch the spacecurve GUI inside the existing canvas element when running on
+/// the web.
 pub async fn run() {
     console_error_panic_hook::set_once();
 
@@ -76,7 +77,8 @@ fn query_flag(param: &str) -> bool {
     }
 }
 
-// Provide a no-op main for non-wasm targets so the bin compiles in workspace builds
+// Provide a no-op main for non-wasm targets so the bin compiles in workspace
+// builds
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {}
 

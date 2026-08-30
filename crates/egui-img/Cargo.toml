@@ -24,3 +24,6 @@ workspace = true
 default = []
 # Enable eframe screenshot support for debug captures
 __screenshot = ["eframe/__screenshot"]
+
+[lib]
+doctest = false

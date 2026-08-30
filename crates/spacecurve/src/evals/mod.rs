@@ -1,8 +1,8 @@
 //! Evaluation metrics for space-filling curves.
 //!
 //! Evaluations compute metrics over curves for a shared grid specification and
-//! return comparable results. The CLI consumes these metrics to render tables or
-//! JSON output.
+//! return comparable results. The CLI consumes these metrics to render tables
+//! or JSON output.
 
 use std::fmt;
 

@@ -1,4 +1,5 @@
-//! Benchmarks for space-filling curve point and index operations across all curve types.
+//! Benchmarks for space-filling curve point and index operations across all
+//! curve types.
 
 use std::hint::black_box;
 
@@ -6,8 +7,8 @@ use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use spacecurve::curve_from_name;
 
 /// Benchmark configurations: (curve_name, dimension, size).
-/// For power-of-two curves (hilbert, zorder, hcurve, gray): size must be power of 2.
-/// For flexible curves (scan, onion, hairyonion): any size works.
+/// For power-of-two curves (hilbert, zorder, hcurve, gray): size must be power
+/// of 2. For flexible curves (scan, onion, hairyonion): any size works.
 fn bench_configs() -> Vec<(&'static str, u32, u32)> {
     vec![
         // Hilbert curve - 2D optimized and N-D general

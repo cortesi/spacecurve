@@ -26,7 +26,8 @@ pub struct CurveEntry<C: Coord, I: Index> {
     pub ctor: CurveCtor<C, I>,
 }
 
-// --- Per-curve validators -----------------------------------------------------
+// --- Per-curve validators
+// -----------------------------------------------------
 
 /// Hilbert pre-validation aligned with constructor invariants.
 fn v_hilbert<C: Coord, I: Index>(dim: u32, size: C) -> error::Result<GridSpec<C, I>> {

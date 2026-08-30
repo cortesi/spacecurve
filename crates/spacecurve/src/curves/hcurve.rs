@@ -106,7 +106,8 @@ fn corner_indexes<I: Index>(d: u32, n: u32) -> Vec<Vec<I>> {
 }
 
 // encode_h in C. (Point to Index)
-// Uses u64 for internal calculations (r) to prevent overflow during intermediate steps.
+// Uses u64 for internal calculations (r) to prevent overflow during
+// intermediate steps.
 /// Compute H-curve index from alpha vectors.
 fn h_index_alphas<I: Index>(d: u32, n: u32, alphas: &[I], corners: &[Vec<I>]) -> I {
     debug_assert_eq!(alphas.len(), n as usize);
@@ -200,7 +201,8 @@ fn h_point<C: Coord, I: Index>(d: u32, n: u32, idx: I, corners: &[Vec<I>]) -> Sm
         let alpha = cached_grey(I::from(r0_u32).expect("alpha fits index type"), corners);
         alphas[i as usize] = alpha;
 
-        // 3. Calculate the transformation (r_shift). This must match the encoding logic.
+        // 3. Calculate the transformation (r_shift). This must match the encoding
+        //    logic.
         let alpha_inv = alpha ^ (two_power_d - I::one());
         let need_to_change_last = I::one() ^ parity(alpha_inv);
         let index = to_usize(alpha_inv + two_power_d * need_to_change_last);
@@ -217,8 +219,9 @@ fn h_point<C: Coord, I: Index>(d: u32, n: u32, idx: I, corners: &[Vec<I>]) -> Sm
         // This prepares the lower bits of r for the next iteration.
         r = r.wrapping_add(r_shift);
     }
-    // Transpose Alphas (N elements, D bits) back to coordinates (D elements, N bits).
-    // We pass D (Dimension) as the width (bits per alpha) to bit_transpose.
+    // Transpose Alphas (N elements, D bits) back to coordinates (D elements, N
+    // bits). We pass D (Dimension) as the width (bits per alpha) to
+    // bit_transpose.
     let coords = ops::bit_transpose(d, &alphas);
     coords
         .iter()
@@ -251,7 +254,8 @@ impl<C: Coord, I: Index> HCurve<C, I> {
         let spec = GridSpec::<C, I>::power_of_two(dimension, size)?;
         let order = spec.order().unwrap();
 
-        // Enforce constraints required by the implementation (u32 limits and bit shifts).
+        // Enforce constraints required by the implementation (u32 limits and bit
+        // shifts).
         if dimension >= 32 {
             return Err(error::Error::Shape("Dimension must be < 32".to_string()));
         }

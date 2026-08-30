@@ -51,7 +51,8 @@ struct ScreenshotState {
     output_path: PathBuf,
 }
 
-/// Compute initial zoom and window size that keep a gap around the image while respecting caps.
+/// Compute initial zoom and window size that keep a gap around the image while
+/// respecting caps.
 fn initial_view(image_size: [usize; 2]) -> (f32, Vec2) {
     let img = Vec2::new(image_size[0] as f32, image_size[1] as f32);
     let usable_max = Vec2::new(
@@ -72,7 +73,8 @@ fn initial_view(image_size: [usize; 2]) -> (f32, Vec2) {
 }
 
 impl ImageViewer {
-    /// Create an `ImageViewer` by uploading the provided `ColorImage` to a texture.
+    /// Create an `ImageViewer` by uploading the provided `ColorImage` to a
+    /// texture.
     fn new(
         cc: &eframe::CreationContext<'_>,
         title: String,
@@ -117,7 +119,8 @@ impl ImageViewer {
         );
     }
 
-    /// Kick off and save a screenshot if configured. Returns true when capture completes.
+    /// Kick off and save a screenshot if configured. Returns true when capture
+    /// completes.
     fn handle_screenshot(&mut self, ctx: &egui::Context) -> bool {
         let Some(state) = self.screenshot.as_mut() else {
             return false;
@@ -235,7 +238,8 @@ impl eframe::App for ImageViewer {
     }
 }
 
-/// Suggest a window size that stays within a comfortable range for most screens.
+/// Suggest a window size that stays within a comfortable range for most
+/// screens.
 fn initial_window_size(image_size: [usize; 2]) -> Vec2 {
     let (_, window) = initial_view(image_size);
     window
@@ -281,9 +285,11 @@ pub fn view_image(title: &str, image: RgbaImage) -> Result<()> {
     .map_err(|err| anyhow!(err.to_string()))
 }
 
-/// View an image and emit a screenshot to `output` once the first frame is rendered.
+/// View an image and emit a screenshot to `output` once the first frame is
+/// rendered.
 ///
-/// This is intended for debugging layout/centering issues. The window closes after capture.
+/// This is intended for debugging layout/centering issues. The window closes
+/// after capture.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn view_image_with_screenshot(title: &str, image: RgbaImage, output: &Path) -> Result<()> {
     let size = [image.width() as usize, image.height() as usize];

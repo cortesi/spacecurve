@@ -287,7 +287,8 @@ struct InfoPaneArgs<'a> {
     curve_was_selected: bool,
     /// Response for the combo box area (used for outside‑click detection).
     combo_response: &'a egui::Response,
-    /// Response for the info button (used for positioning and outside‑click detection).
+    /// Response for the info button (used for positioning and outside‑click
+    /// detection).
     info_button: &'a egui::Response,
 }
 
@@ -555,7 +556,8 @@ fn settings_panel_content(
     shared: &mut crate::SharedSettings,
     show_spin_speed: bool,
 ) {
-    // Logarithmic opacity slider constant - maps opacity (0.01 to 1.0) to log scale (0 to 100)
+    // Logarithmic opacity slider constant - maps opacity (0.01 to 1.0) to log scale
+    // (0 to 100)
     const LOG_MIN: f32 = -4.605;
 
     ui.spacing_mut().item_spacing.y = theme::spacing::MEDIUM - 2.0;
@@ -755,7 +757,8 @@ fn settings_panel_content(
 
 /// Settings dropdown widget that appears as an overlay.
 ///
-/// When `show_spin_speed` is true (3D view), the rotation speed slider is displayed.
+/// When `show_spin_speed` is true (3D view), the rotation speed slider is
+/// displayed.
 pub fn settings_dropdown(
     ui: &mut egui::Ui,
     settings_open: &mut bool,

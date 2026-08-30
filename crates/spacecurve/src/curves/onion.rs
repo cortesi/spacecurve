@@ -1,23 +1,24 @@
-/// The Onion Curve is a space-filling curve named after the core concept of "peeling" an
-/// N-dimensional hypercube layer by layer, like an onion.
+/// The Onion Curve is a space-filling curve named after the core concept of
+/// "peeling" an N-dimensional hypercube layer by layer, like an onion.
 ///
 /// See: https://arxiv.org/abs/1801.07399
 ///
 /// Notes:
-/// * L=2 uses a continuous Gray‑code generalisation (O(N-1) then reversed O(N-1) with
-///   the last coordinate as the discriminator).
-/// * For N>2 and L>2 the onion curve cannot be fully continuous (see comment below),
-///   but this implementation maximises locality on each shell by using an onion on
-///   each half‑face instead of a boustrophedon stripe.
+/// * L=2 uses a continuous Gray‑code generalisation (O(N-1) then reversed
+///   O(N-1) with the last coordinate as the discriminator).
+/// * For N>2 and L>2 the onion curve cannot be fully continuous (see comment
+///   below), but this implementation maximises locality on each shell by using
+///   an onion on each half‑face instead of a boustrophedon stripe.
 ///
-/// The full implementation (core logic plus 2D/L2/rectangular/3D specialisations) lives
-/// in this single module to make the traversal easier to follow.
+/// The full implementation (core logic plus 2D/L2/rectangular/3D
+/// specialisations) lives in this single module to make the traversal easier to
+/// follow.
 ///
 /// Continuity impossibility sketch (unchanged):
-/// Consider a 3×3×3 cube. Chessboard‑colour cells by parity of the coordinate sum.
-/// The outer shell has 26 cells (even). The center cell is White, hence the shell
-/// must end on White; any continuous traversal into the next shell would need to
-/// enter a Black cell, contradiction.
+/// Consider a 3×3×3 cube. Chessboard‑colour cells by parity of the coordinate
+/// sum. The outer shell has 26 cells (even). The center cell is White, hence
+/// the shell must end on White; any continuous traversal into the next shell
+/// would need to enter a Black cell, contradiction.
 use crate::{
     error, ops,
     point::Point,
@@ -178,7 +179,8 @@ fn first_boundary<C: Coord>(local: &[C], side: C) -> (usize, bool) {
     (0, false)
 }
 
-/// Size of each partition P_j on the shell, ordered by first boundary dimension.
+/// Size of each partition P_j on the shell, ordered by first boundary
+/// dimension.
 fn partition_sizes<C: Coord, I: Index>(dimension: u32, side: C) -> Vec<I> {
     let inner = side.saturating_sub(two());
     (0..dimension)
@@ -554,7 +556,8 @@ fn onion_index_rect<C: Coord, I: Index>(sizes: &[C], p: &[C]) -> I {
             .expect("overflow in offset_p");
     }
 
-    // 4) Select sub-part on dimension i* (low vs high). If L_i*==1 there is only one side.
+    // 4) Select sub-part on dimension i* (low vs high). If L_i*==1 there is only
+    //    one side.
     let pre_i: I = sizes[..i_star].iter().fold(I::one(), |acc, &l_k| {
         acc.checked_mul(&to_index::<C, I>(l_k.saturating_sub(two())))
             .expect("overflow in pre_i")
@@ -570,7 +573,8 @@ fn onion_index_rect<C: Coord, I: Index>(sizes: &[C], p: &[C]) -> I {
         offset_sub = face_block;
     }
 
-    // 5) Index within the chosen half‑face using a rectangular onion on remaining dims.
+    // 5) Index within the chosen half‑face using a rectangular onion on remaining
+    //    dims.
     let mut face_sizes: Vec<C> = Vec::with_capacity(sizes.len().saturating_sub(1));
     let mut face_coords: Vec<C> = Vec::with_capacity(p.len().saturating_sub(1));
 

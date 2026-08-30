@@ -8,8 +8,8 @@ use crate::{
 };
 
 /// A continuous N-dimensional generalization of the Onion Curve.
-/// It relaxes strict layering constraints (impossible for N>=3) by tiling the space
-/// with continuous 2D Onion spirals connected via snake ordering.
+/// It relaxes strict layering constraints (impossible for N>=3) by tiling the
+/// space with continuous 2D Onion spirals connected via snake ordering.
 #[derive(Debug)]
 pub struct HairyOnionCurve<C: Coord, I: Index> {
     /// Number of dimensions in the grid.
@@ -108,7 +108,8 @@ fn hairy_onion_index_recursive<C: Coord, I: Index>(n: u32, l: C, p: &[C]) -> I {
     let l_i = to_index::<C, I>(l);
     let volume_2d = l_i.checked_mul(&l_i).expect("validated 2D volume");
 
-    // 4. Apply Snake ordering (reversal) for continuity based on the Tile Index parity
+    // 4. Apply Snake ordering (reversal) for continuity based on the Tile Index
+    //    parity
     let index_2d_effective = if (index_rest & I::one()) == I::one() {
         (volume_2d - I::one()) - index_2d
     } else {
@@ -119,7 +120,8 @@ fn hairy_onion_index_recursive<C: Coord, I: Index>(n: u32, l: C, p: &[C]) -> I {
     index_rest * volume_2d + index_2d_effective
 }
 
-// Helper function to calculate the point from the index recursively (Inverse mapping).
+// Helper function to calculate the point from the index recursively (Inverse
+// mapping).
 /// Inverse of `hairy_onion_index_recursive`: recover coordinates from index.
 fn hairy_onion_point_recursive<C: Coord, I: Index>(n: u32, l: C, index: I) -> Vec<C> {
     if n == 0 {

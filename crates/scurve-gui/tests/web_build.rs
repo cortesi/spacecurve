@@ -6,7 +6,8 @@ mod tests {
     use std::{path::PathBuf, process::Command};
 
     // Ensure the web crate compiles for wasm via the xtask build flow.
-    // This guards against API drift that breaks wasm builds while host tests still pass.
+    // This guards against API drift that breaks wasm builds while host tests still
+    // pass.
     #[cfg(not(target_os = "windows"))]
     #[test]
     fn web_build_task_succeeds() {

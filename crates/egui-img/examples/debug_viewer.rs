@@ -1,4 +1,5 @@
-//! Debug helper to preview `egui-img` centering and optionally write a screenshot.
+//! Debug helper to preview `egui-img` centering and optionally write a
+//! screenshot.
 
 #![allow(missing_docs)]
 

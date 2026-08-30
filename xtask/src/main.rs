@@ -33,10 +33,6 @@ struct Cli {
 /// Supported automation commands.
 #[derive(Debug, Subcommand)]
 enum CommandName {
-    /// Format the workspace and run the linter.
-    Tidy,
-    /// Run tests using cargo nextest.
-    Test,
     /// Web build and serve tasks.
     #[command(subcommand)]
     Web(WebCommand),
@@ -111,8 +107,6 @@ fn run() -> Result<()> {
     let paths = RepoPaths::discover()?;
 
     match cli.command {
-        CommandName::Tidy => tidy(&paths),
-        CommandName::Test => test(&paths),
         CommandName::Web(cmd) => match cmd {
             WebCommand::Setup => web_setup(&paths),
             WebCommand::Serve => web_serve(&paths),
@@ -120,46 +114,6 @@ fn run() -> Result<()> {
             WebCommand::ServeDist { port } => web_serve_dist(&paths, port),
         },
     }
-}
-
-/// Run `cargo fmt` and the workspace linter.
-fn tidy(paths: &RepoPaths) -> Result<()> {
-    format_workspace(paths)?;
-    lint_workspace(paths)?;
-    format_workspace(paths)?;
-    Ok(())
-}
-
-/// Run tests using cargo nextest.
-fn test(paths: &RepoPaths) -> Result<()> {
-    let sh = repo_shell(paths)?;
-    cmd!(sh, "cargo nextest run --all").run()?;
-    Ok(())
-}
-
-/// Format the Rust workspace using rustfmt.
-fn format_workspace(paths: &RepoPaths) -> Result<()> {
-    let sh = repo_shell(paths)?;
-
-    let config = paths.root.join("rustfmt-nightly.toml");
-    if config.is_file() {
-        cmd!(sh, "cargo +nightly fmt --all -- --config-path {config}").run()?;
-        return Ok(());
-    }
-
-    cmd!(sh, "cargo +nightly fmt --all").run()?;
-    Ok(())
-}
-
-/// Run clippy across the workspace, applying safe fixes.
-fn lint_workspace(paths: &RepoPaths) -> Result<()> {
-    let sh = repo_shell(paths)?;
-    cmd!(
-        sh,
-        "cargo clippy -q --fix --all --all-targets --all-features --allow-dirty --tests --examples"
-    )
-    .run()?;
-    Ok(())
 }
 
 /// Create a verbose shell rooted at the repository root.

@@ -141,7 +141,8 @@ mod tests {
         let p1 = gray.point(1);
         assert_eq!(gray.index(&p1), 1);
 
-        // Test that adjacent indices produce points that differ in exactly one coordinate
+        // Test that adjacent indices produce points that differ in exactly one
+        // coordinate
         let p0_coords: Vec<u32> = p0.into();
         let p1_coords: Vec<u32> = p1.into();
         let diff_count = p0_coords

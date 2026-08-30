@@ -344,7 +344,8 @@ fn parse_csv_list(input: &Option<String>, label: &str) -> Result<Option<Vec<Stri
     Ok(Some(unique))
 }
 
-/// Parse a comma-separated list of u32 values, rejecting duplicates and empty values.
+/// Parse a comma-separated list of u32 values, rejecting duplicates and empty
+/// values.
 fn parse_csv_u32_list(input: Option<&String>, label: &str) -> Result<Option<Vec<u32>>> {
     let Some(raw) = input else {
         return Ok(None);

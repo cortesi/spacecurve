@@ -208,7 +208,8 @@ pub mod popup {
     /// Settings dropdown width.
     pub const SETTINGS_WIDTH: f32 = 220.0;
 
-    /// Horizontal padding between the anchor button and panel to avoid overlap with canvas.
+    /// Horizontal padding between the anchor button and panel to avoid overlap
+    /// with canvas.
     pub const SETTINGS_OFFSET_X: f32 = 28.0;
 
     /// Curve info pane width.
@@ -280,14 +281,16 @@ pub mod canvas_3d {
 
     /// Distance from camera to scene center in normalized coordinates.
     ///
-    /// A value of 4.0 with a scene spanning [-1, 1] provides moderate perspective
-    /// distortion that adds depth without excessive foreshortening.
+    /// A value of 4.0 with a scene spanning [-1, 1] provides moderate
+    /// perspective distortion that adds depth without excessive
+    /// foreshortening.
     pub const PERSPECTIVE_DISTANCE: f32 = 4.0;
 
-    /// Fixed tilt angle (radians) for X-axis rotation, giving a slight top-down view.
+    /// Fixed tilt angle (radians) for X-axis rotation, giving a slight top-down
+    /// view.
     ///
-    /// PI/6 (30°) tilts the scene so the top face is partially visible while keeping
-    /// the front face prominent.
+    /// PI/6 (30°) tilts the scene so the top face is partially visible while
+    /// keeping the front face prominent.
     pub const CAMERA_TILT: f32 = PI / 6.0;
 
     /// Minimum depth value (front of scene) for brightness mapping.
@@ -296,7 +299,8 @@ pub mod canvas_3d {
     /// Maximum depth value (back of scene) for brightness mapping.
     pub const DEPTH_MAX: f32 = 2.0;
 
-    /// Factor by which segment endpoints are shortened to avoid overlap at joints.
+    /// Factor by which segment endpoints are shortened to avoid overlap at
+    /// joints.
     ///
     /// A value of 0.6 times the stroke width provides clean separation between
     /// segments meeting at corners without creating visible gaps.
@@ -321,7 +325,8 @@ pub mod canvas_3d {
 
 /// Animation timing parameters.
 pub mod animation {
-    /// Base rotation speed (radians per second) when the speed slider is at 100%.
+    /// Base rotation speed (radians per second) when the speed slider is at
+    /// 100%.
     ///
     /// At this rate, a full 360° rotation takes approximately 18 seconds, which
     /// provides a comfortable viewing speed for examining 3D curve structure.
@@ -508,7 +513,8 @@ pub fn configure_visuals(ctx: &egui::Context) {
         FontData::from_static(FONT_ORBITRON_BOLD).into(),
     );
 
-    // Build stacks that fall back to default proportional fonts so symbols/emojis still render.
+    // Build stacks that fall back to default proportional fonts so symbols/emojis
+    // still render.
     let mut orbitron_stack = fonts
         .families
         .get(&FontFamily::Proportional)
